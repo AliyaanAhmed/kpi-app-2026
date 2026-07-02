@@ -75,16 +75,11 @@ export function KpisPage() {
   const visibleSectors = sectors.filter((sector) => visibleSectorIds.has(sector.id))
   const defaultPerformanceSectorId = visibleSectors[0]?.id
   useEffect(() => {
-    setSectorFilter('all')
+    setSectorFilter(user.role === 'performance_team' && defaultPerformanceSectorId ? defaultPerformanceSectorId : 'all')
     setDepartmentFilter('all')
     setStatusFilter('all')
     setQuery('')
-  }, [activeCycleId, user.id])
-  useEffect(() => {
-    if (user.role === 'performance_team' && sectorFilter === 'all' && defaultPerformanceSectorId) {
-      setSectorFilter(defaultPerformanceSectorId)
-    }
-  }, [defaultPerformanceSectorId, sectorFilter, user.role])
+  }, [activeCycleId, defaultPerformanceSectorId, user.id, user.role])
   const statusMatches = useCallback((status: SubmissionStatus) => {
     if (statusFilter === 'all') return true
     if (statusFilter === 'active') return status === 'active'
