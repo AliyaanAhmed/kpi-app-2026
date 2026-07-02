@@ -14,7 +14,9 @@ type KpiStatusFilter =
   | 'draft'
   | 'submitted'
   | 'performance_assigned'
+  | 'focal_points'
   | 'submitted_to_director'
+  | 'director_approved'
   | 'published'
   | 'clarification_focal'
   | 'clarification_director'
@@ -89,6 +91,7 @@ export function KpisPage() {
     if (statusFilter === 'draft') return status === 'draft'
     if (statusFilter === 'submitted') return ['submitted', 'with_performance_team'].includes(status)
     if (statusFilter === 'performance_assigned') return ['with_performance_team', 'director_approved'].includes(status)
+    if (statusFilter === 'focal_points') return ['active', 'draft', 'submitted', 'clarification_focal', 'clarification_director'].includes(status)
     return status === statusFilter
   }, [statusFilter])
   const filteredKpis = useMemo(
@@ -100,7 +103,7 @@ export function KpisPage() {
         const matchesSector = sectorFilter === 'all' || department?.sectorId === sectorFilter
         const matchesDepartment = departmentFilter === 'all' || kpi.departmentId === departmentFilter
         const matchesQuery = `${kpi.name} ${kpi.description} ${kpi.category} ${department?.name ?? ''}`.toLowerCase().includes(query.toLowerCase())
-        const matchesStatus = !['focal_point', 'performance_team'].includes(user.role) || statusMatches(status)
+        const matchesStatus = !['focal_point', 'performance_team', 'department_director'].includes(user.role) || statusMatches(status)
         return matchesSector && matchesDepartment && matchesQuery && matchesStatus
       }),
     [departmentFilter, departments, kpis, query, sectorFilter, statusMatches, submissionByKpi, user.role],
@@ -211,6 +214,34 @@ export function KpisPage() {
       count: baseDepartmentFilteredKpis.filter((kpi) => (submissionByKpi.get(kpi.id)?.status ?? 'active') === 'clarification_director').length,
     },
   ]
+  const directorStatusTabs: { id: KpiStatusFilter; label: string; count: number }[] = [
+    { id: 'all', label: 'All', count: baseDepartmentFilteredKpis.length },
+    {
+      id: 'focal_points',
+      label: 'With Focal Points',
+      count: baseDepartmentFilteredKpis.filter((kpi) => ['active', 'draft', 'submitted', 'clarification_focal', 'clarification_director'].includes(submissionByKpi.get(kpi.id)?.status ?? 'active')).length,
+    },
+    {
+      id: 'performance_assigned',
+      label: 'With Performance Team',
+      count: baseDepartmentFilteredKpis.filter((kpi) => ['with_performance_team', 'director_approved'].includes(submissionByKpi.get(kpi.id)?.status ?? 'active')).length,
+    },
+    {
+      id: 'submitted_to_director',
+      label: 'Submitted to Me',
+      count: baseDepartmentFilteredKpis.filter((kpi) => (submissionByKpi.get(kpi.id)?.status ?? 'active') === 'submitted_to_director').length,
+    },
+    {
+      id: 'director_approved',
+      label: 'Approved By Me',
+      count: baseDepartmentFilteredKpis.filter((kpi) => (submissionByKpi.get(kpi.id)?.status ?? 'active') === 'director_approved').length,
+    },
+    {
+      id: 'published',
+      label: 'Published',
+      count: baseDepartmentFilteredKpis.filter((kpi) => (submissionByKpi.get(kpi.id)?.status ?? 'active') === 'published').length,
+    },
+  ]
   const tabClass = (active: boolean) =>
     cn(
       'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold transition',
@@ -310,12 +341,12 @@ export function KpisPage() {
           </div>
         ) : null}
         {user.role !== 'performance_team' ? (
-        <div className={cn('mt-4 grid gap-3', user.role === 'focal_point' ? 'lg:grid-cols-1' : 'lg:grid-cols-[1fr_260px]')}>
+        <div className={cn('mt-4 grid gap-3', ['focal_point', 'department_director', 'executive_director', 'director_general'].includes(user.role) ? 'lg:grid-cols-1' : 'lg:grid-cols-[1fr_260px]')}>
           <div className="form-field-surface flex h-10 items-center gap-2 px-3 text-muted">
             <Search className="h-4 w-4" />
             <input className="h-full flex-1 bg-transparent text-sm font-medium text-text outline-none" placeholder="Search KPI, category, or department..." value={query} onChange={(event) => setQuery(event.target.value)} />
           </div>
-          {user.role !== 'focal_point' ? (
+          {!['focal_point', 'department_director', 'executive_director', 'director_general'].includes(user.role) ? (
             <AppSelect
               value={departmentFilter}
               onValueChange={setDepartmentFilter}
@@ -327,6 +358,68 @@ export function KpisPage() {
             />
           ) : null}
         </div>
+        ) : null}
+        {user.role === 'director_general' ? (
+          <div className="mt-3 space-y-3 rounded-[22px] border border-border bg-surface-raised p-3">
+            <div className="grid gap-2 xl:grid-cols-[120px_minmax(0,1fr)] xl:items-start">
+              <span className="pt-2 text-xs font-bold uppercase tracking-[0.12em] text-muted">Sectors</span>
+              <div className="flex flex-wrap gap-2">
+                {sectorTabs.map((tab) => (
+                  <button
+                    className={tabClass(sectorFilter === tab.id)}
+                    key={tab.id}
+                    onClick={() => {
+                      setSectorFilter(tab.id)
+                      setDepartmentFilter('all')
+                    }}
+                    type="button"
+                  >
+                    {tab.label}
+                    <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', sectorFilter === tab.id ? 'bg-white/20' : 'bg-surface text-muted')}>
+                      {tab.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="grid gap-2 border-t border-border pt-3 xl:grid-cols-[120px_minmax(0,1fr)] xl:items-start">
+              <span className="pt-2 text-xs font-bold uppercase tracking-[0.12em] text-muted">Departments</span>
+              <div className="flex flex-wrap gap-2">
+                {performanceDepartmentTabs.map((tab) => (
+                  <button className={tabClass(departmentFilter === tab.id)} key={tab.id} onClick={() => setDepartmentFilter(tab.id)} type="button">
+                    {tab.label}
+                    <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', departmentFilter === tab.id ? 'bg-white/20' : 'bg-surface text-muted')}>
+                      {tab.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
+        {user.role === 'executive_director' ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {departmentTabs.map((tab) => (
+              <button className={tabClass(departmentFilter === tab.id)} key={tab.id} onClick={() => setDepartmentFilter(tab.id)} type="button">
+                {tab.label}
+                <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', departmentFilter === tab.id ? 'bg-white/20' : 'bg-surface text-muted')}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {user.role === 'department_director' ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {directorStatusTabs.map((tab) => (
+              <button className={tabClass(statusFilter === tab.id)} key={tab.id} onClick={() => setStatusFilter(tab.id)} type="button">
+                {tab.label}
+                <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', statusFilter === tab.id ? 'bg-white/20' : 'bg-surface text-muted')}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
         ) : null}
         {user.role === 'focal_point' ? (
           <div className="mt-3 flex flex-wrap items-center gap-2">
