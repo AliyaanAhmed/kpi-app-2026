@@ -506,7 +506,7 @@ export function KpisPage() {
         <table className="w-full min-w-[1000px] text-left text-sm">
           <thead className="sticky top-0 bg-primary-tint text-xs uppercase text-muted">
             {user.role === 'admin' ? (
-              <tr><th className="px-4 py-3">KPI</th><th>Department</th><th>Category</th><th>Status</th></tr>
+              <tr><th className="px-4 py-3">ID</th><th>KPI Name</th><th>Department</th><th>Category</th><th>Status</th></tr>
             ) : user.role === 'focal_point' ? (
               <tr><th className="px-4 py-3">ID</th><th>KPI Name</th><th>AI Review Score</th><th>Is Completed</th><th>Department</th><th>Status</th></tr>
             ) : user.role === 'department_director' ? (
@@ -564,6 +564,17 @@ export function KpisPage() {
                       </td>
                       <td><StatusPill value={submission?.status ?? 'active'} /></td>
                     </>
+                  ) : user.role === 'admin' ? (
+                    <>
+                      <td className="px-4 py-3"><span className="rounded-full bg-primary-tint px-2.5 py-1 font-mono text-xs font-extrabold text-primary">{displayKpiId(kpi.id)}</span></td>
+                      <td>
+                        <Link className="font-semibold text-text transition hover:text-primary" to={`/kpis/${kpi.id}`}>{kpi.name}</Link>
+                        <p className="text-xs text-muted">{kpi.description}</p>
+                      </td>
+                      <td>{departments.find((department) => department.id === kpi.departmentId)?.name}</td>
+                      <td>{kpi.category}</td>
+                      <td><StatusPill value={submission?.status ?? 'active'} /></td>
+                    </>
                   ) : (
                     <>
                       <td className="px-4 py-3">
@@ -572,13 +583,6 @@ export function KpisPage() {
                         <p className="text-xs text-muted">{kpi.description}</p>
                       </td>
                       <td>{departments.find((department) => department.id === kpi.departmentId)?.name}</td>
-                      {user.role === 'admin' ? (
-                        <>
-                          <td>{kpi.category}</td>
-                          <td><StatusPill value={submission?.status ?? 'active'} /></td>
-                        </>
-                      ) : (
-                        <>
                       <td>
                         <div className="flex min-w-[210px] items-center gap-3">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-tint text-primary">
@@ -592,8 +596,6 @@ export function KpisPage() {
                       </td>
                       <td>{kpi.category}</td>
                       <td><StatusPill value={submission?.status ?? 'active'} /></td>
-                        </>
-                      )}
                     </>
                   )}
                 </tr>
@@ -601,7 +603,7 @@ export function KpisPage() {
             })}
             {!filteredKpis.length ? (
               <tr>
-                <td className="px-4 py-12" colSpan={user.role === 'admin' ? 4 : user.role === 'focal_point' ? 6 : user.role === 'department_director' ? 7 : 5}>
+                <td className="px-4 py-12" colSpan={user.role === 'admin' ? 5 : user.role === 'focal_point' ? 6 : user.role === 'department_director' ? 7 : 5}>
                   <div className="mx-auto flex max-w-md flex-col items-center text-center">
                     <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-tint text-primary">
                       <ClipboardX className="h-6 w-6" />

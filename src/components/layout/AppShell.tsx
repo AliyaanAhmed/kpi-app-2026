@@ -1,4 +1,3 @@
-import { Command } from 'cmdk'
 import {
   BarChart3,
   Bell,
@@ -15,14 +14,13 @@ import {
   Moon,
   Newspaper,
   FilePenLine,
-  Search,
   ShieldCheck,
   Sun,
   Target,
   UserCog,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { mockApi } from '../../mockApi/mockApi'
 import { roleLabel, useAppStore } from '../../store/appStore'
 import { cn } from '../../lib/cn'
@@ -57,11 +55,9 @@ const demoRoleUserIds = [
 ]
 
 export function AppShell() {
-  const navigate = useNavigate()
   const location = useLocation()
   const { activeUserId, activeCycleId, setActiveUser, setActiveCycle, theme, setTheme, sidebarCollapsed, setSidebarCollapsed } =
     useAppStore()
-  const [searchOpen, setSearchOpen] = useState(false)
   const [roleMenuOpen, setRoleMenuOpen] = useState(false)
   const [cycleMenuOpen, setCycleMenuOpen] = useState(false)
   const users = mockApi.getUsers()
@@ -87,19 +83,8 @@ export function AppShell() {
         : mockApi.getChangeRequests().filter((request) => request.focalPointId === user.id && request.status === 'pending').length,
     }
   }, [activeCycleId, user.id, user.role, user.departmentId])
-  const searchItems = useMemo(() => {
-    const visibleKpis = mockApi.getKpisForRole(user.role, user.id, activeCycleId)
-    const visibleDepartmentIds = new Set(visibleKpis.map((kpi) => kpi.departmentId))
-    const visibleDepartments = mockApi.getDepartments().filter((department) => visibleDepartmentIds.has(department.id))
-    return [
-      ...visibleKpis.map((kpi) => ({ id: kpi.id, label: kpi.name, path: `/kpis/${kpi.id}` })),
-      ...visibleDepartments.map((department) => ({ id: department.id, label: department.name, path: user.role === 'admin' ? '/admin/hierarchy' : '/kpis' })),
-    ]
-  }, [activeCycleId, user.id, user.role])
-
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
-    setSearchOpen(false)
     setRoleMenuOpen(false)
     setCycleMenuOpen(false)
   }, [location.pathname])
@@ -231,10 +216,7 @@ export function AppShell() {
               </div>
             ) : null}
           </div>
-          <button className="field flex flex-1 items-center justify-between text-muted" onClick={() => setSearchOpen(true)}>
-            <span className="flex items-center gap-2"><Search className="h-4 w-4" /> Search KPIs, departments, users...</span>
-            <kbd className="font-mono text-xs">Ctrl+K</kbd>
-          </button>
+          <div className="flex-1" />
           <button className="btn-secondary h-10 w-10 rounded-full p-0" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
@@ -318,21 +300,6 @@ export function AppShell() {
         </main>
       </div>
 
-      {searchOpen ? (
-        <div className="fixed inset-0 z-50 grid place-items-start bg-black/55 px-4 pt-24" onClick={() => setSearchOpen(false)}>
-          <Command className="mx-auto w-[min(680px,100%)] rounded-2xl border border-border bg-surface-raised p-3 shadow-modal" onClick={(event) => event.stopPropagation()}>
-            <Command.Input className="field w-full" placeholder="Search everything..." autoFocus />
-            <Command.List className="mt-3 max-h-80 overflow-auto">
-              <Command.Empty className="p-4 text-sm text-muted">No results found.</Command.Empty>
-              {searchItems.map((item) => (
-                <Command.Item key={item.id} className="cursor-pointer rounded-xl px-3 py-2 text-sm aria-selected:bg-primary-tint" onSelect={() => { setSearchOpen(false); navigate(item.path) }}>
-                  {item.label}
-                </Command.Item>
-              ))}
-            </Command.List>
-          </Command>
-        </div>
-      ) : null}
     </div>
   )
 }

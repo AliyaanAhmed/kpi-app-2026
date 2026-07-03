@@ -21,13 +21,6 @@ function queueAiScore(submission: KpiSubmission) {
   return Math.min(98, 40 + answered * 8 + evidenceBonus + scoreBonus)
 }
 
-function targetSignal(submission: KpiSubmission) {
-  if (submission.actualScore === undefined) return { tone: 'text-muted', bg: 'bg-surface' }
-  if (submission.actualScore >= submission.targetScore) return { label: 'Target met', tone: 'text-success', bg: 'bg-success/10' }
-  if (submission.actualScore >= submission.targetScore * 0.75) return { label: 'Near target', tone: 'text-warning', bg: 'bg-warning/10' }
-  return { label: 'Below target', tone: 'text-danger', bg: 'bg-danger/10' }
-}
-
 function instanceStatusLabel(status: FocalPointSubmissionInstance['status']) {
   return status.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
 }
@@ -193,7 +186,7 @@ function PerformanceValidationQueue() {
                 </button>
                 <div className="flex flex-wrap items-center justify-end gap-2">
                   <button className="btn-primary h-9 text-xs" disabled={!canSubmitDirector} onClick={() => submitGroup(instance)} type="button"><Send className="h-4 w-4" /> Submit to Director</button>
-                  <button className="btn-secondary h-9 text-xs" disabled={!canPublish} onClick={() => publishGroup(instance)} type="button"><ShieldCheck className="h-4 w-4" /> Publish</button>
+                  <button className="btn-primary h-9 text-xs" disabled={!canPublish} onClick={() => publishGroup(instance)} type="button"><ShieldCheck className="h-4 w-4" /> Publish</button>
                   <button className="btn-secondary h-9 w-9 rounded-full p-0" onClick={() => setOpenId(isOpen ? null : instance.id)} type="button" aria-label={isOpen ? 'Collapse focal point submission' : 'Expand focal point submission'}>
                     <ChevronDown className={cn('h-4 w-4 text-muted transition', isOpen && 'rotate-180')} />
                   </button>
@@ -223,13 +216,12 @@ function PerformanceValidationQueue() {
                             const kpi = mockApi.getKpi(submission.kpiId)
                             const department = departments.find((item) => item.id === kpi?.departmentId)
                             const score = queueAiScore(submission)
-                            const signal = targetSignal(submission)
                             return (
                               <tr className="border-t border-border hover:bg-primary-tint/40" key={submission.id}>
                                 <td className="px-4 py-3"><span className="rounded-full bg-primary-tint px-2.5 py-1 font-mono text-xs font-extrabold text-primary">{displayKpiId(submission.kpiId)}</span></td>
                                 <td><Link className="font-bold transition hover:text-primary" to={`/kpis/${submission.kpiId}`}>{kpi?.name}</Link></td>
                                 <td><span className={cn('inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 font-mono text-base font-extrabold', score >= 80 ? 'bg-success/10 text-success' : score >= 70 ? 'bg-warning/10 text-warning' : 'bg-danger/10 text-danger')}><Sparkles className="h-4 w-4" />{score}</span></td>
-                                <td><span className={cn('rounded-full px-2.5 py-1 text-sm font-bold', signal.bg, signal.tone)}>{submission.actualScore ?? '-'} / {submission.targetScore}{signal.label ? ` - ${signal.label}` : ''}</span></td>
+                                <td><span className="rounded-full bg-primary-tint px-2.5 py-1 font-mono text-sm font-extrabold text-primary">{submission.actualScore ?? '-'} / {submission.targetScore}</span></td>
                                 <td><p className="max-w-[280px] text-sm leading-6 text-muted">{score < 70 ? 'Review evidence and narrative before sending onward.' : 'Evidence and narrative look ready for validation.'}</p></td>
                                 <td>
                                   {['submitted_to_performance_team', 'with_performance_team'].includes(submission.status) ? (

@@ -268,9 +268,9 @@ function FocalPointBulkSubmitPanel({
   const enteredCount = submissions.filter((submission) => submission.status !== 'active' && !clarificationStatuses.includes(submission.status)).length
 
   return (
-    <section className={alerts.length ? 'grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]' : ''}>
-      <article className="group overflow-hidden rounded-[24px] border border-border bg-surface px-4 py-3 shadow-soft transition hover:border-primary/35 hover:shadow-card">
-        <div className="overflow-x-auto">
+    <section className={alerts.length ? 'grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] xl:items-stretch' : ''}>
+      <article className="group flex overflow-hidden rounded-[24px] border border-border bg-surface px-4 py-3 shadow-soft transition hover:border-primary/35 hover:shadow-card">
+        <div className="flex w-full items-center overflow-x-auto">
           <div className="flex min-w-[980px] items-center gap-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary-tint text-primary">
@@ -587,7 +587,7 @@ function TargetActualPanel({ submissions }: { submissions: KpiSubmission[] }) {
   )
 }
 
-function ChartRow({ submissions }: { submissions: KpiSubmission[] }) {
+function ChartRow({ submissions, showRadar = true }: { submissions: KpiSubmission[]; showRadar?: boolean }) {
   const visibleKpiIds = new Set(submissions.map((submission) => submission.kpiId))
   const visibleKpis = mockApi.getKpis().filter((kpi) => visibleKpiIds.has(kpi.id))
   const visibleDepartmentIds = new Set(visibleKpis.map((kpi) => kpi.departmentId))
@@ -611,7 +611,7 @@ function ChartRow({ submissions }: { submissions: KpiSubmission[] }) {
             </ResponsiveContainer>
           </div>
         </article>
-        <RadarPanel submissions={submissions} className="xl:col-span-2" />
+        {showRadar ? <RadarPanel submissions={submissions} className="xl:col-span-2" /> : null}
       </section>
       <section className="grid gap-5 xl:grid-cols-3">
         <ScoreDistributionPanel submissions={submissions} />
@@ -1179,9 +1179,9 @@ function PerformanceCycleSignal({
   const pending = Math.max(0, instances.length - submitted)
 
   return (
-    <section className={sameYearCycles.length ? 'grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]' : ''}>
-      <article className="group overflow-hidden rounded-[24px] border border-border bg-surface px-4 py-3 shadow-soft transition hover:border-primary/35 hover:shadow-card">
-        <div className="overflow-x-auto">
+    <section className={sameYearCycles.length ? 'grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] xl:items-stretch' : ''}>
+      <article className="group flex overflow-hidden rounded-[24px] border border-border bg-surface px-4 py-3 shadow-soft transition hover:border-primary/35 hover:shadow-card">
+        <div className="flex w-full items-center overflow-x-auto">
           <div className="flex min-w-[980px] items-center gap-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary-tint text-primary">
@@ -1481,7 +1481,7 @@ function PerformanceDashboard() {
         <FocalPointSubmissionPanel submissions={submissions} />
         <TargetActualPanel submissions={submissions} />
       </section>
-      <ChartRow submissions={submissions} />
+      <ChartRow submissions={submissions} showRadar={false} />
     </div>
   )
 }
@@ -1504,9 +1504,9 @@ function DirectorCycleSubmissionWidget({ submissions, activeCycleId }: { submiss
   const daysRemaining = dueDate ? Math.max(0, Math.ceil((dueDate.getTime() - Date.now()) / 86_400_000)) : 0
 
   return (
-    <section className={sameYearCycles.length ? 'grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]' : ''}>
-      <article className="group overflow-hidden rounded-[24px] border border-border bg-surface px-4 py-3 shadow-soft transition hover:border-primary/35 hover:shadow-card">
-        <div className="overflow-x-auto">
+    <section className={sameYearCycles.length ? 'grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] xl:items-stretch' : ''}>
+      <article className="group flex overflow-hidden rounded-[24px] border border-border bg-surface px-4 py-3 shadow-soft transition hover:border-primary/35 hover:shadow-card">
+        <div className="flex w-full items-center overflow-x-auto">
           <div className="flex min-w-[980px] items-center gap-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary-tint text-primary">

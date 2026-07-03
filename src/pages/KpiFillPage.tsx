@@ -34,6 +34,9 @@ export function KpiFillPage() {
   const canEdit = submission
     ? ['active', 'draft', 'clarification_focal', 'clarification_director', 'clarification_from_performance', 'clarification_from_director'].includes(submission.status)
     : false
+  const isClarificationRecord = submission
+    ? ['clarification_focal', 'clarification_director', 'clarification_from_performance', 'clarification_from_director'].includes(submission.status)
+    : false
   const defaultAnswers = useMemo(
     () =>
       Object.fromEntries(
@@ -90,6 +93,13 @@ export function KpiFillPage() {
     navigate(`/kpis/${activeKpi.id}`)
   }
 
+  function resubmitToPerformanceTeam(values: FormValues) {
+    mockApi.saveKpiDraft(activeSubmission.id, payload(values))
+    mockApi.submitKpi(activeSubmission.id, 'Resubmitted to Performance Team after clarification.')
+    showSuccessToast('Resubmitted', 'This KPI has been sent back to the Performance Team.')
+    navigate(`/kpis/${activeKpi.id}`)
+  }
+
   const targetMet = actualScore >= activeSubmission.targetScore
   const aiScore = Math.min(96, 48 + (attachments.length ? 18 : 0) + (targetMet ? 14 : 6) + Object.values(watch('answers')).filter((value) => value.trim().length > 30).length * 5)
   const suggestedActual = Math.min(100, Math.max(activeSubmission.targetScore, activeSubmission.actualScore ?? activeSubmission.targetScore + 4))
@@ -139,13 +149,13 @@ export function KpiFillPage() {
       </section>
 
       {!canEdit ? (
-        <section className="flex flex-wrap items-start gap-3 rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 shadow-sm">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-warning text-white">
+        <section className="flex flex-wrap items-start gap-3 rounded-2xl border border-[#F5D0A9] bg-[#FFF7ED] px-4 py-3 shadow-sm dark:border-[#EA580C]/30 dark:bg-[#431407]/40">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#F97316] text-white">
             <History className="h-4 w-4" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-warning">Pending with workflow owner</p>
-            <p className="text-xs leading-5 text-muted">
+            <p className="text-sm font-semibold text-[#C2410C] dark:text-orange-300">Pending with workflow owner</p>
+            <p className="text-xs leading-5 text-[#64748B] dark:text-slate-300">
               This KPI is currently locked in its present workflow status. The focal point can edit it again only when it is Active, Draft, or returned for clarification.
             </p>
           </div>
@@ -418,15 +428,30 @@ export function KpiFillPage() {
               <div><p className="eyebrow">Submission Path</p><p className="text-sm text-muted">Governed status movement</p></div>
             </div>
             <div className="mt-4 space-y-2 text-sm text-muted">
-              <p>Save each KPI as draft from this form.</p>
-              <p>Once all assigned KPI records are drafted, submit them together from the Focal Point dashboard.</p>
+              {isClarificationRecord ? (
+                <>
+                  <p>Update the clarification response and resubmit this KPI to the Performance Team.</p>
+                  <p>The Performance Team will review it again and send the focal point submission onward when ready.</p>
+                </>
+              ) : (
+                <>
+                  <p>Save each KPI as draft from this form.</p>
+                  <p>Once all assigned KPI records are drafted, submit them together from the Focal Point dashboard.</p>
+                </>
+              )}
             </div>
           </article>
         </aside>
       </section>
 
       <div className="sticky bottom-4 flex justify-end gap-3 rounded-2xl border border-border bg-surface-raised p-3 shadow-card">
-        <button className="btn-secondary" type="button" disabled={!canEdit} onClick={handleSubmit(saveDraft)}><Save className="h-4 w-4" /> Save Draft</button>
+        {isClarificationRecord ? (
+          <button className="btn-primary" type="button" disabled={!canEdit} onClick={handleSubmit(resubmitToPerformanceTeam)}>
+            <CheckCircle2 className="h-4 w-4" /> Resubmit to Performance Team
+          </button>
+        ) : (
+          <button className="btn-secondary" type="button" disabled={!canEdit} onClick={handleSubmit(saveDraft)}><Save className="h-4 w-4" /> Save Draft</button>
+        )}
       </div>
     </form>
   )

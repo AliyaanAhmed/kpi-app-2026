@@ -163,7 +163,9 @@ function instanceStatus(submissions: KpiSubmission[]): FocalPointSubmissionInsta
 function focalPointInstances(cycleId: string): FocalPointSubmissionInstance[] {
   const appData = data()
   const cycleKpiIds = new Set(cycleKpis(cycleId).map((kpi) => kpi.id))
-  const grouped = appData.submissions
+  const performanceUserId = appData.users.find((user) => user.role === 'performance_team')?.id ?? 'u-pa-1'
+  const visibleSubmissions = mockApi.getVisibleSubmissionsForRole('performance_team', performanceUserId, cycleId)
+  const grouped = visibleSubmissions
     .filter((submission) => submission.cycleId === cycleId && cycleKpiIds.has(submission.kpiId))
     .reduce((map, submission) => {
       const list = map.get(submission.focalPointId) ?? []

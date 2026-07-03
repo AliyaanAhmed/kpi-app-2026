@@ -129,11 +129,11 @@ h2 {
 
 @layer components {
   .card {
-    @apply rounded-[22px] border border-border bg-surface shadow-soft transition duration-200 hover:border-primary hover:shadow-card;
+    @apply rounded-[22px] border border-border bg-surface shadow-soft transition duration-200 hover:shadow-card;
   }
 
   .raised-card {
-    @apply rounded-[28px] border border-border bg-surface-raised shadow-soft transition duration-200 hover:border-primary hover:shadow-card;
+    @apply rounded-[28px] border border-border bg-surface-raised shadow-soft transition duration-200 hover:shadow-card;
   }
 
   .dashboard-panel {

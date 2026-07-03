@@ -44,7 +44,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const showStaticToast = useCallback((state: 'success' | 'error', title: string, description?: string) => {
     const id = Date.now() + Math.floor(Math.random() * 1000)
-    const durationMs = state === 'success' ? 5200 : 6200
+    const durationMs = state === 'success' ? 3600 : 4800
     setToasts((current) => [...current, { id, state, title, description, progress: 0, durationMs }])
     window.setTimeout(() => dismissToast(id), durationMs)
   }, [dismissToast])
@@ -69,7 +69,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     },
   ) => {
     const id = Date.now() + Math.floor(Math.random() * 1000)
-    const minDurationMs = options.minDurationMs ?? 1200
+    const minDurationMs = options.minDurationMs ?? 900
     const startedAt = Date.now()
 
     setToasts((current) => [
@@ -88,11 +88,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       setToasts((current) =>
         current.map((toast) =>
           toast.id === id && toast.state === 'processing'
-            ? { ...toast, progress: Math.min(toast.progress + 5, 94) }
+            ? { ...toast, progress: Math.min(toast.progress + 7, 94) }
             : toast,
         ),
       )
-    }, 220)
+    }, 170)
 
     try {
       const result = await action()
@@ -108,11 +108,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       setToasts((current) =>
         current.map((toast) =>
           toast.id === id
-            ? { ...toast, state: 'success', title: options.successTitle, description: options.successDescription, progress: 0, durationMs: 4800 }
+            ? { ...toast, state: 'success', title: options.successTitle, description: options.successDescription, progress: 0, durationMs: 3600 }
             : toast,
         ),
       )
-      window.setTimeout(() => dismissToast(id), 4800)
+      window.setTimeout(() => dismissToast(id), 3600)
       return result
     } catch (error) {
       const elapsed = Date.now() - startedAt
@@ -133,12 +133,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 title: options.errorTitle ?? 'Action failed',
                 description: error instanceof Error ? error.message : 'Something went wrong.',
                 progress: 0,
-                durationMs: 6200,
+                durationMs: 4800,
               }
             : toast,
         ),
       )
-      window.setTimeout(() => dismissToast(id), 6200)
+      window.setTimeout(() => dismissToast(id), 4800)
       throw error
     }
   }, [dismissToast])
@@ -165,7 +165,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           {toasts.map((toast) => (
           <motion.div
             animate={{ opacity: 1, scale: 1, x: 0 }}
-            className="pointer-events-auto overflow-hidden rounded-[24px] border border-border bg-white shadow-[0_18px_46px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-surface dark:shadow-[0_20px_56px_rgba(0,0,0,0.42)]"
+            className="pointer-events-auto overflow-hidden rounded-[16px] border border-border bg-white shadow-[0_18px_46px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-surface dark:shadow-[0_20px_56px_rgba(0,0,0,0.42)]"
             exit={{ opacity: 0, scale: 0.97, x: 26 }}
             initial={{ opacity: 0, scale: 0.98, x: 30 }}
             key={toast.id}
@@ -178,7 +178,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               <div className="flex items-center gap-3">
                 <div
                   className={[
-                    'relative flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] transition duration-300',
+                    'relative flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] transition duration-300',
                     toast.state === 'processing' && 'bg-info/10 text-info shadow-[inset_0_0_0_1px_rgba(62,107,132,0.16)]',
                     toast.state === 'success' && 'toast-success-icon bg-success/10 text-success shadow-[inset_0_0_0_1px_rgba(47,122,79,0.16)]',
                     toast.state === 'error' && 'bg-danger/10 text-danger shadow-[inset_0_0_0_1px_rgba(156,43,43,0.16)]',
@@ -186,8 +186,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 >
                   {toast.state === 'processing' ? (
                     <>
-                      <span className="absolute inset-1 rounded-[15px] border border-info/15" />
-                      <Loader2 className="h-5 w-5 animate-spin [animation-duration:1.05s]" />
+                      <span className="absolute inset-1 rounded-[11px] border border-info/15" />
+                      <Loader2 className="h-5 w-5 animate-spin [animation-duration:0.85s]" />
                     </>
                   ) : null}
                   {toast.state === 'success' ? <CheckCircle2 className="h-5 w-5" /> : null}
@@ -220,7 +220,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 </button>
               </div>
             </div>
-            <div className="h-0.5 w-full bg-primary-tint/80 dark:bg-white/10">
+            <div className="h-[3px] w-full bg-primary-tint/80 dark:bg-white/10">
               <div
                 className={[
                   'h-full origin-left rounded-r-full transition-[width,background-color] duration-700 ease-out',
