@@ -123,7 +123,7 @@ function Hero({ eyebrow, title, copy, chips }: { eyebrow: string; title: string;
           {chips.map((chip) => (
             <div className="card px-4 py-3" key={chip.label}>
               <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">{chip.label}</p>
-              <p className="font-display text-3xl font-extrabold">{chip.value}</p>
+              <p className="font-display text-lg font-extrabold leading-tight">{chip.value}</p>
             </div>
           ))}
         </div>

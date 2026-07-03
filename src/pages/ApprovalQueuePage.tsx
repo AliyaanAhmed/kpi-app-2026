@@ -29,6 +29,8 @@ function displayKpiId(id: string) {
   return id.replace(/^kpi-/i, '').toUpperCase()
 }
 
+const directorFlowStatuses = ['submitted_to_director', 'reviewed_by_director', 'approved_by_director', 'director_approved', 'published']
+
 function PerformanceValidationQueue() {
   const { activeCycleId } = useAppStore()
   const { showSuccessToast } = useToast()
@@ -93,6 +95,11 @@ function PerformanceValidationQueue() {
   function submitGroup(instance: FocalPointSubmissionInstance) {
     instance.submissions.forEach((submission) => mockApi.submitToDirector(submission.id, 'Focal point submission sent to Department Director.'))
     showSuccessToast('Submitted to Director', 'Reviewed focal point submission moved to Director review.')
+  }
+
+  function submitSingleToDirector(submission: KpiSubmission) {
+    mockApi.submitToDirector(submission.id, 'Clarification response sent back to Department Director.')
+    showSuccessToast('Submitted to Director', 'The clarified KPI has been returned to Director review.')
   }
 
   function publishGroup(instance: FocalPointSubmissionInstance) {
@@ -216,6 +223,9 @@ function PerformanceValidationQueue() {
                             const kpi = mockApi.getKpi(submission.kpiId)
                             const department = departments.find((item) => item.id === kpi?.departmentId)
                             const score = queueAiScore(submission)
+                            const hasDirectorFlow = instance.submissions.some((item) => directorFlowStatuses.includes(item.status))
+                            const wasDirectorClarification = submission.history.some((event) => event.toStatus === 'clarification_from_director')
+                            const canSubmitSingleDirector = submission.status === 'reviewed_by_performance_team' && (hasDirectorFlow || wasDirectorClarification)
                             return (
                               <tr className="border-t border-border hover:bg-primary-tint/40" key={submission.id}>
                                 <td className="px-4 py-3"><span className="rounded-full bg-primary-tint px-2.5 py-1 font-mono text-xs font-extrabold text-primary">{displayKpiId(submission.kpiId)}</span></td>
@@ -241,6 +251,7 @@ function PerformanceValidationQueue() {
                                   <div className="flex gap-2">
                                     {['submitted_to_performance_team', 'with_performance_team'].includes(submission.status) ? <button className="btn-secondary h-8 text-xs" disabled={!((performanceComments[submission.id] ?? submission.performanceTeamComment ?? '').trim())} title="Enter Performance Team comment before review." onClick={() => reviewKpi(submission)} type="button"><Check className="h-3.5 w-3.5" /> Review</button> : null}
                                     {['submitted_to_performance_team', 'with_performance_team'].includes(submission.status) ? <button className="btn-secondary h-8 text-xs" onClick={() => setClarifying(submission)} type="button"><MessageSquare className="h-3.5 w-3.5" /> Clarify</button> : null}
+                                    {canSubmitSingleDirector ? <button className="btn-primary h-8 text-xs" onClick={() => submitSingleToDirector(submission)} type="button"><Send className="h-3.5 w-3.5" /> Submit to Department Director</button> : null}
                                   </div>
                                 </td>
                               </tr>
@@ -299,27 +310,27 @@ function DirectorApprovalQueue() {
   const users = mockApi.getUsers()
   const department = user.departmentId ? mockApi.getDepartment(user.departmentId) : undefined
   const instances = mockApi.getFocalPointInstances(activeCycleId)
-  const visibleInstances = instances
+  const departmentInstances = instances
     .map((instance) => {
       const filteredSubmissions = instance.submissions.filter((submission) => {
         const kpi = kpis.find((item) => item.id === submission.kpiId)
         const isDepartmentKpi = kpi?.departmentId === user.departmentId
-        const isDirectorQueueStatus = ['submitted_to_director', 'reviewed_by_director'].includes(submission.status)
-        const matchesStatus =
-          statusFilter === 'all' ||
-          (statusFilter === 'pending' && submission.status === 'submitted_to_director') ||
-          (statusFilter === 'reviewed' && submission.status === 'reviewed_by_director')
-        return isDepartmentKpi && isDirectorQueueStatus && matchesStatus
+        return isDepartmentKpi
       })
       return { ...instance, submissions: filteredSubmissions }
     })
     .filter((instance) => instance.submissions.length > 0)
-  const allDirectorSubmissions = instances.flatMap((instance) =>
-    instance.submissions.filter((submission) => {
-      const kpi = kpis.find((item) => item.id === submission.kpiId)
-      return kpi?.departmentId === user.departmentId && ['submitted_to_director', 'reviewed_by_director'].includes(submission.status)
-    }),
-  )
+  const visibleInstances = departmentInstances
+    .map((instance) => {
+      const filteredSubmissions = instance.submissions.filter((submission) => (
+        statusFilter === 'all' ||
+        (statusFilter === 'pending' && submission.status === 'submitted_to_director') ||
+        (statusFilter === 'reviewed' && submission.status === 'reviewed_by_director')
+      ))
+      return { ...instance, submissions: statusFilter === 'all' ? instance.submissions : filteredSubmissions }
+    })
+    .filter((instance) => instance.submissions.length > 0)
+  const allDirectorSubmissions = departmentInstances.flatMap((instance) => instance.submissions)
   const counts = useMemo(
     () => ({
       all: allDirectorSubmissions.length,
@@ -388,9 +399,10 @@ function DirectorApprovalQueue() {
       <section className="space-y-4">
         {visibleInstances.map((instance, index) => {
           const focalPoint = users.find((user) => user.id === instance.focalPointId)
-          const reviewed = instance.submissions.filter((submission) => submission.status === 'reviewed_by_director').length
-          const progress = Math.round((reviewed / Math.max(1, instance.submissions.length)) * 100)
-          const canApprove = instance.submissions.length > 0 && instance.submissions.every((submission) => submission.status === 'reviewed_by_director')
+          const fullInstance = departmentInstances.find((item) => item.id === instance.id) ?? instance
+          const reviewed = fullInstance.submissions.filter((submission) => submission.status === 'reviewed_by_director').length
+          const progress = Math.round((reviewed / Math.max(1, fullInstance.submissions.length)) * 100)
+          const canApprove = fullInstance.submissions.length > 0 && fullInstance.submissions.every((submission) => submission.status === 'reviewed_by_director')
           const isOpen = openId === instance.id
           return (
             <motion.article className="overflow-hidden rounded-[24px] border border-border bg-surface transition hover:border-primary/25 hover:shadow-card" key={instance.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.035 }}>
@@ -404,16 +416,16 @@ function DirectorApprovalQueue() {
                     <p className="mt-1 truncate text-sm text-muted">{department?.name ?? 'Department'}</p>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <span className="status-pill border-primary/15 bg-primary-tint text-primary">{canApprove ? 'Ready for Approval' : 'Director Review'}</span>
-                      <span className="rounded-full border border-border bg-surface-raised px-2.5 py-1 text-xs font-bold text-muted">{instance.submissions.length} KPIs</span>
+                      <span className="rounded-full border border-border bg-surface-raised px-2.5 py-1 text-xs font-bold text-muted">{fullInstance.submissions.length} KPIs</span>
                     </div>
                     <div className="mt-4 max-w-[520px]">
-                      <div className="mb-2 flex items-center justify-between text-xs font-bold text-muted"><span>Review Progress</span><span>{reviewed}/{instance.submissions.length}</span></div>
+                      <div className="mb-2 flex items-center justify-between text-xs font-bold text-muted"><span>Review Progress</span><span>{reviewed}/{fullInstance.submissions.length}</span></div>
                       <div className="h-2 overflow-hidden rounded-full bg-primary-tint"><div className="h-full rounded-full bg-primary" style={{ width: `${progress}%` }} /></div>
                     </div>
                   </div>
                 </button>
                 <div className="flex flex-wrap items-center justify-end gap-2">
-                  <button className="btn-primary h-9 text-xs" disabled={!canApprove} onClick={() => approveGroup(instance)} type="button"><ShieldCheck className="h-4 w-4" /> Approve</button>
+                  <button className="btn-primary h-9 text-xs" disabled={!canApprove} onClick={() => approveGroup(fullInstance)} type="button"><ShieldCheck className="h-4 w-4" /> Approve</button>
                   <button className="btn-secondary h-9 w-9 rounded-full p-0" onClick={() => setOpenId(isOpen ? null : instance.id)} type="button" aria-label={isOpen ? 'Collapse focal point submission' : 'Expand focal point submission'}>
                     <ChevronDown className={cn('h-4 w-4 text-muted transition', isOpen && 'rotate-180')} />
                   </button>

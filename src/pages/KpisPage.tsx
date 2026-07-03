@@ -311,7 +311,7 @@ export function KpisPage() {
                 Bulk Mark as Reviewed
               </button>
             ) : null}
-            <StatusPill value={user.role} />
+            {user.role !== 'department_director' ? <StatusPill value={user.role} /> : null}
           </div>
         </div>
         {user.role === 'focal_point' ? (

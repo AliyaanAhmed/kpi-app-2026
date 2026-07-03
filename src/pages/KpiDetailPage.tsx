@@ -19,6 +19,29 @@ function historyIcon(status: string) {
   return Clock3
 }
 
+function WorkflowCommentCard({ title, author, comment }: { title: string; author: string; comment?: string }) {
+  return (
+    <div className="mt-5 rounded-[22px] border border-primary/15 bg-primary-tint/60 p-4">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-white shadow-soft">
+          <MessageSquare className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-extrabold text-text">{title}</h3>
+            <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-primary shadow-sm dark:bg-white/10">{author}</span>
+          </div>
+          <div className="mt-3 rounded-[18px] border border-border bg-white p-4 shadow-soft dark:bg-surface">
+            <p className="text-sm font-medium leading-6 text-text">
+              {comment?.trim() || 'No workflow comment has been added yet.'}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function KpiDetailPage() {
   const { id } = useParams()
   const { activeCycleId } = useAppStore()
@@ -44,6 +67,12 @@ export function KpiDetailPage() {
   const effectiveDirectorComment = directorComment || activeSubmission?.directorComment || ''
   const canPerformanceReview = user.role === 'performance_team' && activeSubmission && ['submitted_to_performance_team', 'with_performance_team'].includes(activeSubmission.status)
   const canPerformancePublish = user.role === 'performance_team' && activeSubmission && ['approved_by_director', 'director_approved'].includes(activeSubmission.status)
+  const canPerformanceSubmitToDirector = user.role === 'performance_team' && activeSubmission?.status === 'reviewed_by_performance_team' && (
+    activeSubmission.history.some((event) => event.toStatus === 'clarification_from_director') ||
+    mockApi.getFocalPointInstances(activeCycleId)
+      .find((instance) => instance.focalPointId === activeSubmission.focalPointId)
+      ?.submissions.some((submission) => ['submitted_to_director', 'reviewed_by_director', 'approved_by_director', 'director_approved', 'published'].includes(submission.status))
+  )
   const canDirectorReview = user.role === 'department_director' && activeSubmission?.status === 'submitted_to_director'
   const canRaiseClarification = activeSubmission && (
     (user.role === 'performance_team' && ['submitted_to_performance_team', 'with_performance_team'].includes(activeSubmission.status)) ||
@@ -70,6 +99,12 @@ export function KpiDetailPage() {
     }
     mockApi.reviewByDirector(activeSubmission.id, comment)
     showSuccessToast('KPI reviewed', 'Director comment has been saved.')
+  }
+
+  function handlePerformanceSubmitToDirector() {
+    if (!activeSubmission) return
+    mockApi.submitToDirector(activeSubmission.id, 'Clarification response sent back to Department Director.')
+    showSuccessToast('Submitted to Director', 'The clarified KPI has been returned to Director review.')
   }
 
   function handleClarification() {
@@ -109,6 +144,20 @@ export function KpiDetailPage() {
               </div>
             ))}
           </div>
+          {user.role === 'department_director' && activeSubmission ? (
+            <WorkflowCommentCard
+              title="Performance Team Comment"
+              author="Performance Team"
+              comment={activeSubmission.performanceTeamComment}
+            />
+          ) : null}
+          {user.role === 'performance_team' && activeSubmission ? (
+            <WorkflowCommentCard
+              title="Director Comment"
+              author="Department Director"
+              comment={activeSubmission.directorComment}
+            />
+          ) : null}
         </article>
         <aside className="space-y-5">
           <article className="card p-5">
@@ -162,6 +211,7 @@ export function KpiDetailPage() {
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {canPerformanceReview ? <button className="btn-primary h-9 text-xs" disabled={!effectivePerformanceComment.trim()} onClick={handlePerformanceReview} type="button"><Check className="h-4 w-4" /> Review</button> : null}
+                  {canPerformanceSubmitToDirector ? <button className="btn-primary h-9 text-xs" onClick={handlePerformanceSubmitToDirector} type="button"><Send className="h-4 w-4" /> Submit to Department Director</button> : null}
                   {canPerformancePublish ? <button className="btn-primary h-9 text-xs" onClick={() => { mockApi.publishKpis([activeSubmission.id]); showSuccessToast('KPI published') }} type="button"><ShieldCheck className="h-4 w-4" /> Publish</button> : null}
                   {canRaiseClarification ? <button className="btn-secondary h-9 text-xs" onClick={() => setClarificationOpen(true)} type="button"><MessageSquare className="h-4 w-4" /> Clarification</button> : null}
                 </div>
