@@ -12,13 +12,20 @@ export type TargetType = 'number' | 'percentage' | 'boolean'
 export type SubmissionStatus =
   | 'active'
   | 'draft'
+  | 'submitted_to_performance_team'
+  | 'reviewed_by_performance_team'
+  | 'submitted_to_director'
+  | 'reviewed_by_director'
+  | 'clarification_from_performance'
+  | 'clarification_from_director'
+  | 'approved_by_director'
+  | 'published'
+  // Legacy aliases kept while older screens are migrated to the canonical workflow names above.
   | 'submitted'
   | 'with_performance_team'
   | 'clarification_focal'
-  | 'submitted_to_director'
   | 'clarification_director'
   | 'director_approved'
-  | 'published'
 
 export type ChangeRequestType = 'kpi_details' | 'definition' | 'target_score'
 export type ChangeRequestStatus = 'pending' | 'approved' | 'rejected'
@@ -48,6 +55,7 @@ export interface User {
   email: string
   role: Role
   departmentId?: string
+  departmentIds?: string[]
   sectorId?: string
   avatarUrl?: string
   active: boolean
@@ -112,8 +120,30 @@ export interface KpiSubmission {
   actualScore?: number
   answers: { questionId: string; answer: string }[]
   attachments: Attachment[]
+  performanceTeamComment?: string
+  directorComment?: string
   status: SubmissionStatus
   history: KpiHistoryEvent[]
+}
+
+export type FocalPointInstanceStatus =
+  | 'draft'
+  | 'submitted_to_performance_team'
+  | 'reviewed_by_performance_team'
+  | 'submitted_to_director'
+  | 'reviewed_by_director'
+  | 'clarification'
+  | 'approved_by_director'
+  | 'published'
+
+export interface FocalPointSubmissionInstance {
+  id: string
+  cycleId: string
+  focalPointId: string
+  departmentIds: string[]
+  sectorIds: string[]
+  status: FocalPointInstanceStatus
+  submissions: KpiSubmission[]
 }
 
 export interface ChangeRequest {

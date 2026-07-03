@@ -96,13 +96,15 @@ export const useAppStore = create<AppStore>()(
     }),
     {
       name: 'kpi-app-state',
-      version: 3,
+      version: 6,
       migrate: (persistedState) => {
         const persisted = persistedState as Partial<AppStore> | undefined
+        const activeUserId = seedData.users.some((user) => user.id === persisted?.activeUserId) ? persisted?.activeUserId : 'u-admin'
+        const activeCycleId = seedData.cycles.some((cycle) => cycle.id === persisted?.activeCycleId) ? persisted?.activeCycleId : 'cycle-q2-2026'
         return {
           data: seedData,
-          activeUserId: persisted?.activeUserId ?? 'u-admin',
-          activeCycleId: persisted?.activeCycleId ?? 'cycle-q2-2026',
+          activeUserId,
+          activeCycleId,
           theme: persisted?.theme ?? 'dark',
           sidebarCollapsed: persisted?.sidebarCollapsed ?? false,
         }

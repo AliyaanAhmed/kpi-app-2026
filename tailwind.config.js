@@ -18,6 +18,7 @@ export default {
         warning: 'var(--warning)',
         danger: 'var(--danger)',
         info: 'var(--info)',
+        ai: 'var(--ai)',
       },
       fontFamily: {
         sans: ['Plus Jakarta Sans', 'Source Sans 3', 'Inter', 'system-ui', 'sans-serif'],
@@ -25,10 +26,10 @@ export default {
         mono: ['IBM Plex Mono', 'ui-monospace', 'monospace'],
       },
       boxShadow: {
-        soft: '0 6px 14px rgb(20 13 15 / 4%)',
-        card: '0 10px 22px rgb(20 13 15 / 7%)',
-        premium: '0 12px 26px rgb(20 13 15 / 8%)',
-        modal: '0 36px 90px rgb(0 0 0 / 38%)',
+        soft: '0 8px 18px rgb(15 23 42 / 5%)',
+        card: '0 12px 30px rgb(15 23 42 / 6%)',
+        premium: '0 16px 36px rgb(15 23 42 / 8%)',
+        modal: '0 36px 90px rgb(15 23 42 / 24%)',
       },
     },
   },

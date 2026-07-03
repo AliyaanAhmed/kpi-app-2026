@@ -48,11 +48,12 @@ const navItems: { label: string; path: string; icon: React.ComponentType<{ class
 
 const demoRoleUserIds = [
   'u-admin',
-  'u-fp-1-1',
+  'u-fp-data',
+  'u-fp-cloud',
+  'u-fp-shared',
   'u-pa-1',
   'u-dir-data',
-  'u-ed-digital',
-  'u-dg',
+  'u-dir-cloud',
 ]
 
 export function AppShell() {
@@ -75,7 +76,7 @@ export function AppShell() {
   const queueCounts = useMemo(() => {
     const visibleSubmissions = mockApi.getVisibleSubmissionsForRole(user.role, user.id, activeCycleId)
     return {
-      '/approval/validate': visibleSubmissions.filter((submission) => ['with_performance_team', 'director_approved'].includes(submission.status)).length,
+      '/approval/validate': visibleSubmissions.filter((submission) => ['submitted_to_performance_team', 'reviewed_by_performance_team', 'with_performance_team', 'approved_by_director', 'director_approved'].includes(submission.status)).length,
       '/approval/queue': visibleSubmissions.filter((submission) => {
         if (submission.status !== 'submitted_to_director') return false
         const kpi = mockApi.getKpi(submission.kpiId)
@@ -173,7 +174,7 @@ export function AppShell() {
       </aside>
 
       <div className={cn('transition-all', sidebarCollapsed ? 'pl-[76px]' : 'pl-[280px]')}>
-        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-surface/95 px-6 backdrop-blur">
+        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-white px-6 backdrop-blur dark:bg-surface">
           <div className="relative">
             <button
               className="flex h-11 min-w-[230px] items-center gap-2 rounded-2xl border border-border bg-surface px-2.5 text-left transition hover:bg-surface-raised hover:shadow-soft"

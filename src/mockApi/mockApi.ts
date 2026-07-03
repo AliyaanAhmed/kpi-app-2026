@@ -3,6 +3,7 @@ import type {
   ChangeRequest,
   ChangeRequestType,
   Cycle,
+  FocalPointSubmissionInstance,
   Kpi,
   KpiSubmission,
   KpiTemplate,
@@ -148,6 +149,52 @@ function applyApprovedChangeRequest(changeRequest: ChangeRequest) {
   useAppStore.getState().upsertKpi({ ...kpi, name: changeRequest.proposedValue })
 }
 
+function instanceStatus(submissions: KpiSubmission[]): FocalPointSubmissionInstance['status'] {
+  if (submissions.some((submission) => ['clarification_focal', 'clarification_director', 'clarification_from_performance', 'clarification_from_director'].includes(submission.status))) return 'clarification'
+  if (submissions.length && submissions.every((submission) => submission.status === 'published')) return 'published'
+  if (submissions.length && submissions.every((submission) => ['approved_by_director', 'director_approved', 'published'].includes(submission.status))) return 'approved_by_director'
+  if (submissions.length && submissions.every((submission) => ['reviewed_by_director', 'approved_by_director', 'director_approved', 'published'].includes(submission.status))) return 'reviewed_by_director'
+  if (submissions.length && submissions.every((submission) => ['submitted_to_director', 'reviewed_by_director', 'approved_by_director', 'director_approved', 'published'].includes(submission.status))) return 'submitted_to_director'
+  if (submissions.length && submissions.every((submission) => ['reviewed_by_performance_team', 'submitted_to_director', 'reviewed_by_director', 'approved_by_director', 'director_approved', 'published'].includes(submission.status))) return 'reviewed_by_performance_team'
+  if (submissions.length && submissions.every((submission) => ['submitted_to_performance_team', 'reviewed_by_performance_team', 'with_performance_team', 'submitted_to_director', 'reviewed_by_director', 'approved_by_director', 'director_approved', 'published'].includes(submission.status))) return 'submitted_to_performance_team'
+  return 'draft'
+}
+
+function focalPointInstances(cycleId: string): FocalPointSubmissionInstance[] {
+  const appData = data()
+  const cycleKpiIds = new Set(cycleKpis(cycleId).map((kpi) => kpi.id))
+  const grouped = appData.submissions
+    .filter((submission) => submission.cycleId === cycleId && cycleKpiIds.has(submission.kpiId))
+    .reduce((map, submission) => {
+      const list = map.get(submission.focalPointId) ?? []
+      list.push(submission)
+      map.set(submission.focalPointId, list)
+      return map
+    }, new Map<string, KpiSubmission[]>())
+
+  return Array.from(grouped.entries()).map(([focalPointId, submissions]) => {
+    const departmentIds = Array.from(new Set(
+      submissions
+        .map((submission) => appData.kpis.find((kpi) => kpi.id === submission.kpiId)?.departmentId)
+        .filter((departmentId): departmentId is string => Boolean(departmentId)),
+    ))
+    const sectorIds = Array.from(new Set(
+      departmentIds
+        .map((departmentId) => appData.departments.find((department) => department.id === departmentId)?.sectorId)
+        .filter((sectorId): sectorId is string => Boolean(sectorId)),
+    ))
+    return {
+      id: `instance-${cycleId}-${focalPointId}`,
+      cycleId,
+      focalPointId,
+      departmentIds,
+      sectorIds,
+      status: instanceStatus(submissions),
+      submissions,
+    }
+  })
+}
+
 export const mockApi = {
   getCurrentUser: currentUser,
   getUsers: () => data().users,
@@ -159,6 +206,7 @@ export const mockApi = {
   getDepartments: () => data().departments,
   getTeams: () => data().teams,
   getSubmissions: () => data().submissions,
+  getFocalPointInstances: focalPointInstances,
   getChangeRequests: () => data().changeRequests,
   getSubmission: (id: string) => data().submissions.find((submission) => submission.id === id),
   getCycleKpis: cycleKpis,
@@ -264,7 +312,7 @@ export const mockApi = {
     payload: { actualScore?: number; answers: { questionId: string; answer: string }[]; attachments: Attachment[] },
   ) => {
     const submission = data().submissions.find((item) => item.id === id)
-    if (!submission || !['active', 'draft', 'clarification_focal', 'clarification_director'].includes(submission.status)) return submission
+    if (!submission || !['active', 'draft', 'clarification_focal', 'clarification_director', 'clarification_from_performance', 'clarification_from_director'].includes(submission.status)) return submission
     const updated = {
       ...submission,
       status: 'draft' as const,
@@ -291,8 +339,8 @@ export const mockApi = {
   },
   submitKpi: (id: string, note = 'Submitted by Focal Point') => {
     const submission = data().submissions.find((item) => item.id === id)
-    if (!submission || !['draft', 'clarification_focal', 'clarification_director'].includes(submission.status)) return submission
-    return stamp(submission, 'with_performance_team', note)
+    if (!submission || !['draft', 'clarification_focal', 'clarification_director', 'clarification_from_performance', 'clarification_from_director'].includes(submission.status)) return submission
+    return stamp(submission, 'submitted_to_performance_team', note)
   },
   submitFocalPointKpis: (userId: string, cycleId: string, note = 'Bulk submitted by Focal Point') => {
     const visibleSubmissions = mockApi.getVisibleSubmissionsForRole('focal_point', userId, cycleId)
@@ -301,32 +349,48 @@ export const mockApi = {
         const persisted =
           data().submissions.find((item) => item.id === submission.id) ??
           mockApi.ensureSubmissionForKpi(submission.kpiId, cycleId, userId)
-        if (!persisted || !['draft', 'clarification_focal', 'clarification_director'].includes(persisted.status)) return persisted
-        return stamp(persisted, 'with_performance_team', note)
+        if (!persisted || !['draft', 'clarification_focal', 'clarification_director', 'clarification_from_performance', 'clarification_from_director'].includes(persisted.status)) return persisted
+        return stamp(persisted, 'submitted_to_performance_team', note)
       })
       .filter((submission): submission is KpiSubmission => Boolean(submission))
   },
   raiseClarification: (id: string, note: string) => {
     const submission = data().submissions.find((item) => item.id === id)
     if (!submission) return submission
-    const toStatus = submission.status === 'submitted_to_director' ? 'clarification_director' : 'clarification_focal'
+    const toStatus = ['submitted_to_director', 'reviewed_by_director'].includes(submission.status) ? 'clarification_from_director' : 'clarification_from_performance'
     return stamp(submission, toStatus, note)
+  },
+  reviewByPerformanceTeam: (id: string, comment: string, note = 'Reviewed by Performance Team') => {
+    const submission = data().submissions.find((item) => item.id === id)
+    const trimmedComment = comment.trim()
+    if (!submission || !['submitted_to_performance_team', 'with_performance_team'].includes(submission.status) || !trimmedComment) return submission
+    const updated: KpiSubmission = { ...submission, performanceTeamComment: trimmedComment }
+    useAppStore.getState().upsertSubmission(updated)
+    return stamp(updated, 'reviewed_by_performance_team', note)
   },
   submitToDirector: (id: string, note = 'Validated and submitted to Department Director') => {
     const submission = data().submissions.find((item) => item.id === id)
-    if (!submission || submission.status !== 'with_performance_team') return submission
+    if (!submission || !['reviewed_by_performance_team', 'with_performance_team'].includes(submission.status)) return submission
     return stamp(submission, 'submitted_to_director', note)
+  },
+  reviewByDirector: (id: string, comment: string, note = 'Reviewed by Department Director') => {
+    const submission = data().submissions.find((item) => item.id === id)
+    const trimmedComment = comment.trim()
+    if (!submission || submission.status !== 'submitted_to_director' || !trimmedComment) return submission
+    const updated: KpiSubmission = { ...submission, directorComment: trimmedComment }
+    useAppStore.getState().upsertSubmission(updated)
+    return stamp(updated, 'reviewed_by_director', note)
   },
   approveKpi: (id: string, note = 'Approved by Department Director') => {
     const submission = data().submissions.find((item) => item.id === id)
-    if (!submission || submission.status !== 'submitted_to_director') return submission
-    return stamp(submission, 'director_approved', note)
+    if (!submission || !['reviewed_by_director', 'submitted_to_director'].includes(submission.status)) return submission
+    return stamp(submission, 'approved_by_director', note)
   },
   publishKpis: (ids: string[], note = 'Published by Performance Team') =>
     ids
       .map((id) => data().submissions.find((item) => item.id === id))
       .filter((submission): submission is KpiSubmission => Boolean(submission))
       .map((submission) =>
-        submission.status === 'director_approved' ? stamp(submission, 'published', note) : submission,
+        ['approved_by_director', 'director_approved'].includes(submission.status) ? stamp(submission, 'published', note) : submission,
       ),
 }

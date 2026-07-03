@@ -1,6 +1,9 @@
-import { ArrowLeft, ArrowRight, CheckCircle2, Clock3, FileText, History, RotateCcw, Send, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Clock3, FileText, History, MessageSquare, RotateCcw, Send, ShieldCheck } from 'lucide-react'
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { Modal } from '../components/ui/Modal'
 import { StatusPill } from '../components/ui/StatusPill'
+import { useToast } from '../context/ToastContext'
 import { mockApi } from '../mockApi/mockApi'
 import { useAppStore } from '../store/appStore'
 
@@ -11,14 +14,19 @@ function titleCaseStatus(value: string) {
 function historyIcon(status: string) {
   if (status.includes('clarification')) return RotateCcw
   if (status === 'published') return ShieldCheck
-  if (status === 'director_approved') return CheckCircle2
-  if (status === 'submitted_to_director' || status === 'with_performance_team') return Send
+  if (status === 'director_approved' || status === 'approved_by_director' || status === 'reviewed_by_director' || status === 'reviewed_by_performance_team') return CheckCircle2
+  if (status === 'submitted_to_director' || status === 'with_performance_team' || status === 'submitted_to_performance_team') return Send
   return Clock3
 }
 
 export function KpiDetailPage() {
   const { id } = useParams()
   const { activeCycleId } = useAppStore()
+  const { showSuccessToast, showErrorToast } = useToast()
+  const [clarificationOpen, setClarificationOpen] = useState(false)
+  const [clarificationNote, setClarificationNote] = useState('')
+  const [performanceComment, setPerformanceComment] = useState('')
+  const [directorComment, setDirectorComment] = useState('')
   const user = mockApi.getCurrentUser()
   const kpi = id ? mockApi.getKpi(id) : undefined
   const visibleKpiIds = new Set(mockApi.getKpisForRole(user.role, user.id, activeCycleId).map((item) => item.id))
@@ -29,6 +37,47 @@ export function KpiDetailPage() {
 
   if (!kpi || !visibleKpiIds.has(kpi.id)) {
     return <section className="raised-card p-6">KPI not found for this role and selected cycle.</section>
+  }
+
+  const activeSubmission = submission
+  const effectivePerformanceComment = performanceComment || activeSubmission?.performanceTeamComment || ''
+  const effectiveDirectorComment = directorComment || activeSubmission?.directorComment || ''
+  const canPerformanceReview = user.role === 'performance_team' && activeSubmission && ['submitted_to_performance_team', 'with_performance_team'].includes(activeSubmission.status)
+  const canPerformancePublish = user.role === 'performance_team' && activeSubmission && ['approved_by_director', 'director_approved'].includes(activeSubmission.status)
+  const canDirectorReview = user.role === 'department_director' && activeSubmission?.status === 'submitted_to_director'
+  const canRaiseClarification = activeSubmission && (
+    (user.role === 'performance_team' && ['submitted_to_performance_team', 'with_performance_team'].includes(activeSubmission.status)) ||
+    (user.role === 'department_director' && activeSubmission.status === 'submitted_to_director')
+  )
+
+  function handlePerformanceReview() {
+    if (!activeSubmission) return
+    const comment = effectivePerformanceComment.trim()
+    if (!comment) {
+      showErrorToast('Comment required', 'Enter Performance Team comment before reviewing this KPI.')
+      return
+    }
+    mockApi.reviewByPerformanceTeam(activeSubmission.id, comment)
+    showSuccessToast('KPI reviewed', 'Performance Team comment has been saved.')
+  }
+
+  function handleDirectorReview() {
+    if (!activeSubmission) return
+    const comment = effectiveDirectorComment.trim()
+    if (!comment) {
+      showErrorToast('Comment required', 'Enter Director comment before reviewing this KPI.')
+      return
+    }
+    mockApi.reviewByDirector(activeSubmission.id, comment)
+    showSuccessToast('KPI reviewed', 'Director comment has been saved.')
+  }
+
+  function handleClarification() {
+    if (!activeSubmission || !clarificationNote.trim()) return
+    mockApi.raiseClarification(activeSubmission.id, clarificationNote.trim())
+    showSuccessToast('Clarification returned', 'The KPI is back with the Focal Point for update.')
+    setClarificationNote('')
+    setClarificationOpen(false)
   }
 
   return (
@@ -86,6 +135,71 @@ export function KpiDetailPage() {
               {!submission?.attachments.length ? <p className="text-sm text-muted">No evidence files attached yet.</p> : null}
             </div>
           </article>
+          {user.role === 'performance_team' && activeSubmission ? (
+            <article className="card p-5">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-tint text-primary">
+                  <MessageSquare className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-extrabold">Performance Team Actions</h3>
+                  <p className="mt-1 text-sm text-muted">Review, comment, clarify, and move the KPI forward.</p>
+                </div>
+              </div>
+              <div className="mt-4 space-y-3">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-bold">Performance Team Comment</span>
+                  {canPerformanceReview ? (
+                    <textarea
+                      className="min-h-28 w-full rounded-2xl border border-border bg-surface-raised px-3 py-2 text-sm leading-6 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
+                      placeholder="Enter Performance Team review comment..."
+                      value={effectivePerformanceComment}
+                      onChange={(event) => setPerformanceComment(event.target.value)}
+                    />
+                  ) : (
+                    <p className="rounded-2xl border border-border bg-surface-raised p-3 text-sm leading-6 text-muted">{activeSubmission.performanceTeamComment || 'No Performance Team comment.'}</p>
+                  )}
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {canPerformanceReview ? <button className="btn-primary h-9 text-xs" disabled={!effectivePerformanceComment.trim()} onClick={handlePerformanceReview} type="button"><Check className="h-4 w-4" /> Review</button> : null}
+                  {canPerformancePublish ? <button className="btn-primary h-9 text-xs" onClick={() => { mockApi.publishKpis([activeSubmission.id]); showSuccessToast('KPI published') }} type="button"><ShieldCheck className="h-4 w-4" /> Publish</button> : null}
+                  {canRaiseClarification ? <button className="btn-secondary h-9 text-xs" onClick={() => setClarificationOpen(true)} type="button"><MessageSquare className="h-4 w-4" /> Clarification</button> : null}
+                </div>
+              </div>
+            </article>
+          ) : null}
+          {user.role === 'department_director' && activeSubmission ? (
+            <article className="card p-5">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-tint text-primary">
+                  <ShieldCheck className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-extrabold">Director Actions</h3>
+                  <p className="mt-1 text-sm text-muted">Review, comment, clarify, and approve the KPI.</p>
+                </div>
+              </div>
+              <div className="mt-4 space-y-3">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-bold">Director Comment</span>
+                  {canDirectorReview ? (
+                    <textarea
+                      className="min-h-28 w-full rounded-2xl border border-border bg-surface-raised px-3 py-2 text-sm leading-6 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
+                      placeholder="Enter Director review comment..."
+                      value={effectiveDirectorComment}
+                      onChange={(event) => setDirectorComment(event.target.value)}
+                    />
+                  ) : (
+                    <p className="rounded-2xl border border-border bg-surface-raised p-3 text-sm leading-6 text-muted">{activeSubmission.directorComment || 'No Director comment.'}</p>
+                  )}
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {canDirectorReview ? <button className="btn-primary h-9 text-xs" disabled={!effectiveDirectorComment.trim()} onClick={handleDirectorReview} type="button"><Check className="h-4 w-4" /> Review</button> : null}
+                  {canRaiseClarification ? <button className="btn-secondary h-9 text-xs" onClick={() => setClarificationOpen(true)} type="button"><MessageSquare className="h-4 w-4" /> Clarification</button> : null}
+                </div>
+              </div>
+            </article>
+          ) : null}
         </aside>
       </section>
       <section className="card p-5">
@@ -136,6 +250,22 @@ export function KpiDetailPage() {
           ) : null}
         </div>
       </section>
+      <Modal
+        open={clarificationOpen}
+        onOpenChange={setClarificationOpen}
+        icon={<MessageSquare className="h-5 w-5" />}
+        eyebrow="Clarification"
+        title="Return KPI for clarification"
+        description="Write the clarification note for the Focal Point. This will update the workflow status and history."
+        footer={<div className="flex justify-end gap-3"><button className="btn-secondary" onClick={() => setClarificationOpen(false)}>Cancel</button><button className="btn-primary" disabled={!clarificationNote.trim()} onClick={handleClarification}>Send Clarification</button></div>}
+      >
+        <textarea
+          className="min-h-36 w-full rounded-[16px] border border-border bg-surface px-4 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
+          placeholder="Write the clarification note..."
+          value={clarificationNote}
+          onChange={(event) => setClarificationNote(event.target.value)}
+        />
+      </Modal>
     </div>
   )
 }

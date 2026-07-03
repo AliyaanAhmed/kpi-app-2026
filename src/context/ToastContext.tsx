@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, CheckCircle2, Loader2, X } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
 
 interface ToastItem {
   id: number
@@ -7,6 +8,7 @@ interface ToastItem {
   title: string
   description?: string
   progress: number
+  durationMs: number
 }
 
 interface ToastContextValue {
@@ -42,8 +44,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const showStaticToast = useCallback((state: 'success' | 'error', title: string, description?: string) => {
     const id = Date.now() + Math.floor(Math.random() * 1000)
-    setToasts((current) => [...current, { id, state, title, description, progress: 100 }])
-    window.setTimeout(() => dismissToast(id), state === 'success' ? 3200 : 4200)
+    const durationMs = state === 'success' ? 5200 : 6200
+    setToasts((current) => [...current, { id, state, title, description, progress: 0, durationMs }])
+    window.setTimeout(() => dismissToast(id), durationMs)
   }, [dismissToast])
 
   const showSuccessToast = useCallback((title: string, description?: string) => {
@@ -77,6 +80,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         title: options.processingTitle,
         description: options.processingDescription,
         progress: 5,
+        durationMs: 0,
       },
     ])
 
@@ -84,11 +88,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       setToasts((current) =>
         current.map((toast) =>
           toast.id === id && toast.state === 'processing'
-            ? { ...toast, progress: Math.min(toast.progress + 5, 95) }
+            ? { ...toast, progress: Math.min(toast.progress + 5, 94) }
             : toast,
         ),
       )
-    }, 120)
+    }, 220)
 
     try {
       const result = await action()
@@ -104,11 +108,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       setToasts((current) =>
         current.map((toast) =>
           toast.id === id
-            ? { ...toast, state: 'success', title: options.successTitle, description: options.successDescription, progress: 100 }
+            ? { ...toast, state: 'success', title: options.successTitle, description: options.successDescription, progress: 0, durationMs: 4800 }
             : toast,
         ),
       )
-      window.setTimeout(() => dismissToast(id), 2600)
+      window.setTimeout(() => dismissToast(id), 4800)
       return result
     } catch (error) {
       const elapsed = Date.now() - startedAt
@@ -128,55 +132,83 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 state: 'error',
                 title: options.errorTitle ?? 'Action failed',
                 description: error instanceof Error ? error.message : 'Something went wrong.',
-                progress: 100,
+                progress: 0,
+                durationMs: 6200,
               }
             : toast,
         ),
       )
-      window.setTimeout(() => dismissToast(id), 4200)
+      window.setTimeout(() => dismissToast(id), 6200)
       throw error
     }
   }, [dismissToast])
 
-  const isProcessing = toasts.some((toast) => toast.state === 'processing')
+  const hasVisibleToast = toasts.length > 0
   const value = useMemo(() => ({ showSuccessToast, showErrorToast, runActionToast }), [showSuccessToast, showErrorToast, runActionToast])
 
   return (
     <ToastContext.Provider value={value}>
       {children}
-      {isProcessing ? <div className="pointer-events-none fixed inset-0 z-[950] bg-black/10 backdrop-blur-[3px] dark:bg-black/25" /> : null}
+      <AnimatePresence>
+        {hasVisibleToast ? (
+          <motion.div
+            animate={{ opacity: 1 }}
+            className="pointer-events-none fixed inset-0 z-[950] bg-white/18 backdrop-blur-[5px] dark:bg-black/30"
+            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }}
+            transition={{ duration: 0.24 }}
+          />
+        ) : null}
+      </AnimatePresence>
       <div className="pointer-events-none fixed right-4 top-4 z-[1000] flex w-[calc(100vw-2rem)] max-w-[390px] flex-col gap-3 sm:right-5">
-        {toasts.map((toast) => (
-          <div
-            className="pointer-events-auto overflow-hidden rounded-[18px] border border-border bg-surface shadow-modal"
+        <AnimatePresence initial={false}>
+          {toasts.map((toast) => (
+          <motion.div
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            className="pointer-events-auto overflow-hidden rounded-[24px] border border-border bg-white shadow-[0_18px_46px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-surface dark:shadow-[0_20px_56px_rgba(0,0,0,0.42)]"
+            exit={{ opacity: 0, scale: 0.97, x: 26 }}
+            initial={{ opacity: 0, scale: 0.98, x: 30 }}
             key={toast.id}
+            layout
+            transition={{ duration: 0.28, ease: [0.2, 0.85, 0.25, 1] }}
           >
-            <div className="border-b border-border bg-surface-raised px-4 py-3">
+            <div className="relative overflow-hidden">
+              <div className="absolute inset-x-0 top-0 h-px bg-white/70 dark:bg-white/10" />
+              <div className="px-4 py-4">
               <div className="flex items-center gap-3">
                 <div
                   className={[
-                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px]',
-                    toast.state === 'processing' && 'bg-info/10 text-info',
-                    toast.state === 'success' && 'bg-success/10 text-success',
-                    toast.state === 'error' && 'bg-danger/10 text-danger',
+                    'relative flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] transition duration-300',
+                    toast.state === 'processing' && 'bg-info/10 text-info shadow-[inset_0_0_0_1px_rgba(62,107,132,0.16)]',
+                    toast.state === 'success' && 'toast-success-icon bg-success/10 text-success shadow-[inset_0_0_0_1px_rgba(47,122,79,0.16)]',
+                    toast.state === 'error' && 'bg-danger/10 text-danger shadow-[inset_0_0_0_1px_rgba(156,43,43,0.16)]',
                   ].filter(Boolean).join(' ')}
                 >
-                  {toast.state === 'processing' ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
+                  {toast.state === 'processing' ? (
+                    <>
+                      <span className="absolute inset-1 rounded-[15px] border border-info/15" />
+                      <Loader2 className="h-5 w-5 animate-spin [animation-duration:1.05s]" />
+                    </>
+                  ) : null}
                   {toast.state === 'success' ? <CheckCircle2 className="h-5 w-5" /> : null}
                   {toast.state === 'error' ? <AlertTriangle className="h-5 w-5" /> : null}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div
                     className={[
-                      'mb-1 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]',
+                      'mb-1 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em]',
                       toast.state === 'processing' && 'bg-info/10 text-info',
                       toast.state === 'success' && 'bg-success/10 text-success',
                       toast.state === 'error' && 'bg-danger/10 text-danger',
                     ].filter(Boolean).join(' ')}
                   >
-                    {toast.state}
+                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                    {toast.state === 'processing' ? 'Processing' : toast.state === 'success' ? 'Success' : 'Attention'}
                   </div>
-                  <p className="truncate text-sm font-bold text-text">{toast.title}</p>
+                  <p className="truncate text-[15px] font-extrabold text-text">{toast.title}</p>
+                  {toast.description ? (
+                    <p className="mt-1 line-clamp-2 text-xs font-medium leading-5 text-muted">{toast.description}</p>
+                  ) : null}
                 </div>
                 <button
                   className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted transition hover:bg-primary-tint hover:text-primary"
@@ -188,24 +220,26 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 </button>
               </div>
             </div>
-            {toast.description ? (
-              <div className="px-4 py-3">
-                <p className="whitespace-pre-line text-xs font-medium leading-5 text-muted">{toast.description}</p>
-              </div>
-            ) : null}
-            <div className="h-1 w-full bg-primary-tint">
+            <div className="h-0.5 w-full bg-primary-tint/80 dark:bg-white/10">
               <div
                 className={[
-                  'h-full transition-[width,background-color] duration-200 ease-linear',
+                  'h-full origin-left rounded-r-full transition-[width,background-color] duration-700 ease-out',
+                  toast.state !== 'processing' && 'toast-progress-grow',
                   toast.state === 'processing' && 'bg-info',
                   toast.state === 'success' && 'bg-success',
                   toast.state === 'error' && 'bg-danger',
                 ].filter(Boolean).join(' ')}
-                style={{ width: `${toast.progress}%` }}
+                key={`${toast.id}-${toast.state}`}
+                style={{
+                  width: `${toast.progress}%`,
+                  animationDuration: toast.durationMs ? `${toast.durationMs}ms` : undefined,
+                }}
               />
             </div>
-          </div>
-        ))}
+            </div>
+          </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </ToastContext.Provider>
   )

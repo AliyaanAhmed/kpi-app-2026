@@ -2,63 +2,27 @@ import type { AppData, Kpi, KpiSubmission, SubmissionStatus } from '../domain/ty
 
 const sectors = [
   { id: 'sec-digital', name: 'Digital Government', executiveDirectorId: 'u-ed-digital' },
-  { id: 'sec-operations', name: 'Government Operations', executiveDirectorId: 'u-ed-ops' },
-  { id: 'sec-citizen', name: 'Citizen Services', executiveDirectorId: 'u-ed-citizen' },
 ]
 
 const departments = [
   { id: 'dep-data', name: 'Data Governance', sectorId: 'sec-digital', directorId: 'u-dir-data' },
   { id: 'dep-cloud', name: 'Cloud Operations', sectorId: 'sec-digital', directorId: 'u-dir-cloud' },
-  { id: 'dep-cyber', name: 'Cyber Security', sectorId: 'sec-digital', directorId: 'u-dir-cyber' },
-  { id: 'dep-service', name: 'Service Transformation', sectorId: 'sec-operations', directorId: 'u-dir-service' },
-  { id: 'dep-arch', name: 'Enterprise Architecture', sectorId: 'sec-operations', directorId: 'u-dir-arch' },
-  { id: 'dep-finance', name: 'Financial Performance', sectorId: 'sec-operations', directorId: 'u-dir-finance' },
-  { id: 'dep-experience', name: 'Digital Experience', sectorId: 'sec-citizen', directorId: 'u-dir-exp' },
-  { id: 'dep-support', name: 'Citizen Support', sectorId: 'sec-citizen', directorId: 'u-dir-support' },
-  { id: 'dep-learning', name: 'Learning & Growth', sectorId: 'sec-citizen', directorId: 'u-dir-learning' },
 ]
 
 const users = [
   { id: 'u-admin', name: 'Mariam Al Nuaimi', email: 'admin@govdigital.local', role: 'admin', active: true },
   { id: 'u-pa-1', name: 'Ali Raza', email: 'ali@govdigital.local', role: 'performance_team', active: true },
-  { id: 'u-pa-2', name: 'Sara Khan', email: 'sara@govdigital.local', role: 'performance_team', active: true },
-  { id: 'u-pa-3', name: 'Omar Saeed', email: 'omar@govdigital.local', role: 'performance_team', active: true },
-  { id: 'u-dg', name: 'H.E. Director General', email: 'dg@govdigital.local', role: 'director_general', active: true },
-  ...sectors.map((sector) => ({
-    id: sector.executiveDirectorId,
-    name: `${sector.name} Executive Director`,
-    email: `${sector.id}@govdigital.local`,
-    role: 'executive_director' as const,
-    sectorId: sector.id,
-    active: true,
-  })),
-  ...departments.map((department) => ({
-    id: department.directorId,
-    name: `${department.name} Director`,
-    email: `${department.id}.director@govdigital.local`,
-    role: 'department_director' as const,
-    departmentId: department.id,
-    sectorId: department.sectorId,
-    active: true,
-  })),
-  ...departments.flatMap((department, index) =>
-    [1, 2].map((slot) => ({
-      id: `u-fp-${index + 1}-${slot}`,
-      name: `${department.name} Focal ${slot}`,
-      email: `${department.id}.fp${slot}@govdigital.local`,
-      role: 'focal_point' as const,
-      departmentId: department.id,
-      sectorId: department.sectorId,
-      active: true,
-    })),
-  ),
+  { id: 'u-dir-data', name: 'Data Governance Director', email: 'data.director@govdigital.local', role: 'department_director', departmentId: 'dep-data', sectorId: 'sec-digital', active: true },
+  { id: 'u-dir-cloud', name: 'Cloud Operations Director', email: 'cloud.director@govdigital.local', role: 'department_director', departmentId: 'dep-cloud', sectorId: 'sec-digital', active: true },
+  { id: 'u-fp-data', name: 'Data Governance Focal Point', email: 'data.focal@govdigital.local', role: 'focal_point', departmentId: 'dep-data', departmentIds: ['dep-data'], sectorId: 'sec-digital', active: true },
+  { id: 'u-fp-cloud', name: 'Cloud Operations Focal Point', email: 'cloud.focal@govdigital.local', role: 'focal_point', departmentId: 'dep-cloud', departmentIds: ['dep-cloud'], sectorId: 'sec-digital', active: true },
+  { id: 'u-fp-shared', name: 'Shared Services Focal Point', email: 'shared.focal@govdigital.local', role: 'focal_point', departmentId: 'dep-data', departmentIds: ['dep-data', 'dep-cloud'], sectorId: 'sec-digital', active: true },
 ] satisfies AppData['users']
 
-const teams = departments.map((department, index) => ({
-  id: `team-${department.id}`,
-  departmentId: department.id,
-  focalPointIds: [`u-fp-${index + 1}-1`, `u-fp-${index + 1}-2`],
-}))
+const teams = [
+  { id: 'team-dep-data', departmentId: 'dep-data', focalPointIds: ['u-fp-data', 'u-fp-shared'] },
+  { id: 'team-dep-cloud', departmentId: 'dep-cloud', focalPointIds: ['u-fp-cloud', 'u-fp-shared'] },
+]
 
 const categories = ['Financial', 'Customer', 'Internal Process', 'Learning & Growth', 'Digital Excellence']
 
@@ -68,7 +32,7 @@ const defaultKpiQuestions = [
   { id: 'recommendations', label: 'Recommendations' },
 ]
 
-const kpis: Kpi[] = Array.from({ length: 20 }, (_, index) => {
+const kpis: Kpi[] = Array.from({ length: 9 }, (_, index) => {
   const department = departments[index % departments.length]
   const category = categories[index % categories.length]
 
@@ -88,13 +52,13 @@ const templates = [
     id: 'tpl-balanced-scorecard',
     name: 'Government Balanced Scorecard',
     description: 'Primary quarterly template covering enterprise performance categories.',
-    kpiIds: kpis.slice(0, 18).map((kpi) => kpi.id),
+    kpiIds: kpis.map((kpi) => kpi.id),
   },
   {
     id: 'tpl-digital-acceleration',
     name: 'Digital Acceleration Template',
     description: 'ICT and transformation-heavy KPI template for digital delivery cycles.',
-    kpiIds: kpis.slice(2, 20).map((kpi) => kpi.id),
+    kpiIds: kpis.slice(0, 6).map((kpi) => kpi.id),
   },
 ]
 
@@ -121,46 +85,59 @@ const cycles = [
   },
 ] satisfies AppData['cycles']
 
-const statusCycle: SubmissionStatus[] = [
-  'active',
-  'draft',
-  'submitted',
-  'with_performance_team',
-  'clarification_focal',
-  'submitted_to_director',
-  'clarification_director',
-  'director_approved',
-  'published',
+const demoAssignments: { kpiId: string; focalPointId: string; status: SubmissionStatus }[] = [
+  { kpiId: 'kpi-001', focalPointId: 'u-fp-data', status: 'draft' },
+  { kpiId: 'kpi-003', focalPointId: 'u-fp-data', status: 'draft' },
+  { kpiId: 'kpi-005', focalPointId: 'u-fp-data', status: 'draft' },
+  { kpiId: 'kpi-002', focalPointId: 'u-fp-cloud', status: 'submitted_to_performance_team' },
+  { kpiId: 'kpi-004', focalPointId: 'u-fp-cloud', status: 'submitted_to_performance_team' },
+  { kpiId: 'kpi-006', focalPointId: 'u-fp-cloud', status: 'submitted_to_performance_team' },
+  { kpiId: 'kpi-007', focalPointId: 'u-fp-shared', status: 'submitted_to_director' },
+  { kpiId: 'kpi-008', focalPointId: 'u-fp-shared', status: 'submitted_to_director' },
+  { kpiId: 'kpi-009', focalPointId: 'u-fp-shared', status: 'submitted_to_director' },
 ]
 
-const submissions: KpiSubmission[] = templates[0].kpiIds.map((kpiId, index) => {
+const submissions: KpiSubmission[] = demoAssignments.map(({ kpiId, focalPointId, status }, index) => {
   const kpi = kpis.find((item) => item.id === kpiId)!
   const team = teams.find((item) => item.departmentId === kpi.departmentId)!
-  const status = statusCycle[index % statusCycle.length]
   const cycle = cycles.find((item) => item.id === 'cycle-q2-2026')!
-
+  const isEntered = status !== 'active'
+  const isPerformanceReviewed = ['reviewed_by_performance_team', 'submitted_to_director', 'reviewed_by_director', 'approved_by_director', 'published'].includes(status)
+  const isDirectorReviewed = ['reviewed_by_director', 'approved_by_director', 'published'].includes(status)
   return {
-    id: `sub-${kpiId}`,
+    id: `sub-cycle-q2-2026-${kpiId}`,
     kpiId,
     cycleId: 'cycle-q2-2026',
-    focalPointId: team.focalPointIds[index % team.focalPointIds.length],
+    focalPointId,
     teamId: team.id,
     targetScore: cycle.targetScore,
-    actualScore: ['active', 'draft'].includes(status) ? undefined : 62 + ((index * 7) % 35),
+    actualScore: isEntered ? 74 + ((index * 4) % 22) : undefined,
     answers: kpi.questions.map((question) => ({
       questionId: question.id,
-      answer: ['active', 'draft'].includes(status) ? '' : `Evidence summary for ${kpi.name}.`,
+      answer: isEntered ? `${question.label} narrative for ${kpi.name} with measurable evidence and department context.` : '',
     })),
-    attachments: ['active', 'draft'].includes(status) ? [] : [{ id: `att-${kpiId}`, fileName: `${kpi.name}.pdf`, url: '#' }],
+    attachments: isEntered ? [{ id: `att-${kpiId}`, fileName: `${kpi.name}.pdf`, url: '#' }] : [],
+    performanceTeamComment: isPerformanceReviewed
+      ? `Performance Team reviewed ${kpi.name} and confirmed evidence readiness for director handoff.`
+      : status === 'clarification_from_performance'
+        ? `Performance Team requested stronger evidence and clearer analysis for ${kpi.name}.`
+        : undefined,
+    directorComment: isDirectorReviewed
+      ? `Director reviewed ${kpi.name} and confirmed department-level acceptance.`
+      : status === 'clarification_from_director'
+        ? `Director requested focal point clarification on ${kpi.name} before approval.`
+        : undefined,
     status,
     history: [
       {
         id: `hist-${kpiId}-1`,
-        actorId: team.focalPointIds[0],
+        actorId: focalPointId,
         actorRole: 'focal_point',
         fromStatus: 'active',
         toStatus: status,
-        note: status === 'active' ? 'KPI activated for the published cycle.' : status === 'draft' ? 'Draft saved for the active cycle.' : 'Submitted with supporting evidence.',
+        note: status === 'draft'
+            ? 'Draft saved for the active cycle.'
+            : `Seeded workflow state: ${status.replaceAll('_', ' ')}.`,
         timestamp: `2026-06-${String(10 + (index % 15)).padStart(2, '0')}T09:30:00.000Z`,
       },
     ],

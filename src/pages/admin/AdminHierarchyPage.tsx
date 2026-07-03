@@ -5,7 +5,7 @@ import { mockApi } from '../../mockApi/mockApi'
 import { useAppStore } from '../../store/appStore'
 import { cn } from '../../lib/cn'
 
-const sectorTone = ['#ef5b74', '#d9963d', '#68a9e6']
+const sectorTone = ['#286CFF', '#4A9D5C', '#A855F7']
 
 function initials(name?: string) {
   return (name ?? 'NA')

@@ -16,9 +16,9 @@ export function TrackersPage() {
   const visibleDepartmentIds = new Set(kpis.map((kpi) => kpi.departmentId))
   const visibleDepartments = departments.filter((department) => visibleDepartmentIds.has(department.id))
   const trackerStats = [
-    { label: 'Pending Validation', value: submissions.filter((submission) => submission.status === 'with_performance_team').length, icon: Clock3 },
+    { label: 'Pending Validation', value: submissions.filter((submission) => ['submitted_to_performance_team', 'with_performance_team'].includes(submission.status)).length, icon: Clock3 },
     { label: 'Director Handoff', value: new Set(submissions.filter((submission) => submission.status === 'submitted_to_director').map((submission) => mockApi.getKpi(submission.kpiId)?.departmentId)).size, icon: Send },
-    { label: 'Returned KPIs', value: submissions.filter((submission) => ['clarification_focal', 'clarification_director'].includes(submission.status)).length, icon: RotateCcw },
+    { label: 'Returned KPIs', value: submissions.filter((submission) => ['clarification_focal', 'clarification_director', 'clarification_from_performance', 'clarification_from_director'].includes(submission.status)).length, icon: RotateCcw },
     { label: 'Published Departments', value: new Set(submissions.filter((submission) => submission.status === 'published').map((submission) => mockApi.getKpi(submission.kpiId)?.departmentId)).size, icon: CheckCircle2 },
   ]
 
@@ -49,14 +49,14 @@ export function TrackersPage() {
           const departmentKpis = kpis.filter((kpi) => kpi.departmentId === department.id)
           const departmentSubmissions = submissions.filter((submission) => departmentKpis.some((kpi) => kpi.id === submission.kpiId))
           const published = departmentSubmissions.filter((submission) => submission.status === 'published').length
-          const pending = departmentSubmissions.filter((submission) => submission.status === 'with_performance_team').length
+          const pending = departmentSubmissions.filter((submission) => ['submitted_to_performance_team', 'with_performance_team'].includes(submission.status)).length
           const director = departmentSubmissions.filter((submission) => submission.status === 'submitted_to_director').length
-          const returned = departmentSubmissions.filter((submission) => ['clarification_focal', 'clarification_director'].includes(submission.status)).length
+          const returned = departmentSubmissions.filter((submission) => ['clarification_focal', 'clarification_director', 'clarification_from_performance', 'clarification_from_director'].includes(submission.status)).length
           const completion = Math.round((published / Math.max(1, departmentSubmissions.length)) * 100)
           const team = teams.find((item) => item.departmentId === department.id)
           const focalRows = team?.focalPointIds.map((id) => {
             const focalSubmissions = departmentSubmissions.filter((submission) => submission.focalPointId === id)
-            const moved = focalSubmissions.filter((submission) => ['with_performance_team', 'submitted_to_director', 'director_approved', 'published'].includes(submission.status)).length
+            const moved = focalSubmissions.filter((submission) => ['submitted_to_performance_team', 'reviewed_by_performance_team', 'with_performance_team', 'submitted_to_director', 'reviewed_by_director', 'approved_by_director', 'director_approved', 'published'].includes(submission.status)).length
             return {
               id,
               name: users.find((item) => item.id === id)?.name ?? 'Focal Point',
@@ -123,7 +123,7 @@ export function TrackersPage() {
                         <p className="truncate text-sm font-semibold">{row.name}</p>
                         <p className="mt-1 text-xs text-muted">{row.moved}/{row.total} submitted onward</p>
                       </div>
-                      <StatusPill value={row.moved === row.total && row.total > 0 ? 'with_performance_team' : 'active'} />
+                      <StatusPill value={row.moved === row.total && row.total > 0 ? 'submitted_to_performance_team' : 'active'} />
                     </div>
                     <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-primary-tint">
                       <div className="h-full rounded-full bg-primary" style={{ width: `${row.percent}%` }} />
