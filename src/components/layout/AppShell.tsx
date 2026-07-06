@@ -52,6 +52,8 @@ const demoRoleUserIds = [
   'u-pa-1',
   'u-dir-data',
   'u-dir-cloud',
+  'u-ed-digital',
+  'u-dg-1',
 ]
 
 export function AppShell() {

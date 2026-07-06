@@ -96,7 +96,7 @@ export const useAppStore = create<AppStore>()(
     }),
     {
       name: 'kpi-app-state',
-      version: 7,
+      version: 9,
       migrate: (persistedState) => {
         const persisted = persistedState as Partial<AppStore> | undefined
         const activeUserId = seedData.users.some((user) => user.id === persisted?.activeUserId) ? persisted?.activeUserId : 'u-admin'

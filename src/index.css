@@ -17,6 +17,9 @@
   --danger: #ea4f49;
   --info: #4f98ff;
   --ai: #a855f7;
+  --ai-strong: #7e22ce;
+  --ai-soft: #faf5ff;
+  --ai-border: #dacbff;
   color: var(--text);
   background: var(--bg);
   font-family: 'Plus Jakarta Sans', 'Source Sans 3', Inter, system-ui, sans-serif;
@@ -41,6 +44,9 @@
   --danger: #f87171;
   --info: #93c5fd;
   --ai: #c084fc;
+  --ai-strong: #e9d5ff;
+  --ai-soft: #241334;
+  --ai-border: #6d4aa3;
 }
 
 #root {
@@ -166,5 +172,32 @@ h2 {
 
   .status-pill {
     @apply inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold;
+  }
+
+  .ai-panel {
+    background: linear-gradient(0deg, var(--ai-soft), var(--surface));
+    border-color: var(--ai-border);
+    @apply rounded-[24px] border p-5 shadow-soft transition duration-200 hover:shadow-card;
+  }
+
+  .ai-icon {
+    background: color-mix(in srgb, var(--ai) 13%, transparent);
+    color: var(--ai);
+    @apply flex shrink-0 items-center justify-center rounded-2xl;
+  }
+
+  .ai-heading {
+    color: var(--ai-strong);
+  }
+
+  .ai-chip {
+    background: color-mix(in srgb, var(--ai) 12%, transparent);
+    color: var(--ai-strong);
+    @apply rounded-full px-3 py-1.5 text-xs font-extrabold;
+  }
+
+  .ai-surface {
+    @apply rounded-2xl border bg-surface p-3 shadow-soft;
+    border-color: color-mix(in srgb, var(--ai-border) 72%, var(--border));
   }
 }

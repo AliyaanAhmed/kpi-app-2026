@@ -3,22 +3,28 @@ import { motion } from 'framer-motion'
 import {
   Activity,
   ArrowRight,
+  BarChart3,
   BellRing,
+  Bot,
   Building2,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
   Clock3,
+  Eye,
   FilePenLine,
+  Filter,
   Layers3,
+  MessageCircle,
+  Search,
   ShieldCheck,
   Sparkles,
   Target,
   TrendingUp,
   Users,
 } from 'lucide-react'
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Area,
@@ -26,12 +32,16 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
 import { StatusPill } from '../components/ui/StatusPill'
+import { AppSelect } from '../components/ui/AppSelect'
 import { useToast } from '../context/ToastContext'
 import type { Cycle, Department, FocalPointSubmissionInstance, Kpi, KpiSubmission, SubmissionStatus } from '../domain/types'
 import { mockApi } from '../mockApi/mockApi'
@@ -269,45 +279,84 @@ function FocalPointBulkSubmitPanel({
 
   return (
     <section className={alerts.length ? 'grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] xl:items-stretch' : ''}>
-      <article className="group flex overflow-hidden rounded-[24px] border border-border bg-surface px-4 py-3 shadow-soft transition hover:border-primary/35 hover:shadow-card">
-        <div className="flex w-full items-center overflow-x-auto">
-          <div className="flex min-w-[980px] items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary-tint text-primary">
-                <CalendarDays className="h-[18px] w-[18px]" />
+      <article className={alerts.length
+        ? 'group flex h-full overflow-hidden rounded-[24px] border border-border bg-surface px-4 py-3 shadow-soft transition hover:border-primary/35 hover:shadow-card'
+        : 'group overflow-hidden rounded-[24px] border border-border bg-surface px-4 py-3 shadow-soft transition hover:border-primary/35 hover:shadow-card'}
+      >
+        {alerts.length ? (
+          <div className="flex w-full flex-col justify-center gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary-tint text-primary">
+                  <CalendarDays className="h-[18px] w-[18px]" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-muted">Performance Team Submission Deadline</p>
+                  <p className="mt-1 text-base font-extrabold text-primary">{daysRemaining} days remaining</p>
+                </div>
               </div>
+              <div className="relative">
+                <button className="btn-primary h-11 w-full rounded-[18px] px-4 disabled:cursor-not-allowed disabled:opacity-55 md:w-auto" disabled={!allReady} onClick={onSubmit} type="button">
+                  Submit to Performance Team <ArrowRight className="h-4 w-4" />
+                </button>
+                <div className="pointer-events-none absolute bottom-[calc(100%+0.65rem)] right-0 w-[300px] rounded-2xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted opacity-0 shadow-card transition group-hover:opacity-100">
+                  You can submit to Performance Team once all KPIs are entered.
+                </div>
+              </div>
+            </div>
+            <div className="h-px bg-border" />
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-info/10 text-info">
+                  <Sparkles className="h-[18px] w-[18px]" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-muted">AI Summary</p>
+                  <p className="mt-1 text-sm font-semibold text-text">KPIs entered, <span className="text-primary">{enteredCount}/{submissions.length}</span></p>
+                </div>
+              </div>
+              <div className="hidden h-10 w-px bg-border sm:block" />
               <div>
-                <p className="whitespace-nowrap text-xs font-semibold text-muted">Performance Team Submission Deadline</p>
-                <p className="mt-1 text-sm font-bold text-primary">{daysRemaining} days remaining</p>
-              </div>
-            </div>
-            <div className="h-12 w-px shrink-0 bg-border" />
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-info/10 text-info">
-                <Sparkles className="h-[18px] w-[18px]" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-muted">AI Summary</p>
-                <p className="mt-1 whitespace-nowrap text-sm font-semibold text-text">
-                  KPIs entered, <span className="text-primary">{enteredCount}/{submissions.length}</span>
-                </p>
-              </div>
-            </div>
-            <div className="relative ml-auto shrink-0">
-              <button
-                className="btn-primary h-11 rounded-[18px] px-4 disabled:cursor-not-allowed disabled:opacity-55"
-                disabled={!allReady}
-                onClick={onSubmit}
-                type="button"
-              >
-                Submit to Performance Team <ArrowRight className="h-4 w-4" />
-              </button>
-              <div className="pointer-events-none absolute bottom-[calc(100%+0.65rem)] right-0 w-[300px] rounded-2xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted opacity-0 shadow-card transition group-hover:opacity-100">
-                You can submit to Performance Team once all KPIs are entered.
+                <p className="text-xs font-semibold text-muted">Readiness</p>
+                <p className="mt-1 text-sm font-bold text-text">{allReady ? 'Ready to submit' : 'Pending entry'}</p>
               </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <div className="flex min-w-[980px] items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary-tint text-primary">
+                  <CalendarDays className="h-[18px] w-[18px]" />
+                </div>
+                <div>
+                  <p className="whitespace-nowrap text-xs font-semibold text-muted">Performance Team Submission Deadline</p>
+                  <p className="mt-1 text-sm font-bold text-primary">{daysRemaining} days remaining</p>
+                </div>
+              </div>
+              <div className="h-12 w-px shrink-0 bg-border" />
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-info/10 text-info">
+                  <Sparkles className="h-[18px] w-[18px]" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-muted">AI Summary</p>
+                  <p className="mt-1 whitespace-nowrap text-sm font-semibold text-text">
+                    KPIs entered, <span className="text-primary">{enteredCount}/{submissions.length}</span>
+                  </p>
+                </div>
+              </div>
+              <div className="relative ml-auto shrink-0">
+                <button className="btn-primary h-11 rounded-[18px] px-4 disabled:cursor-not-allowed disabled:opacity-55" disabled={!allReady} onClick={onSubmit} type="button">
+                  Submit to Performance Team <ArrowRight className="h-4 w-4" />
+                </button>
+                <div className="pointer-events-none absolute bottom-[calc(100%+0.65rem)] right-0 w-[300px] rounded-2xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted opacity-0 shadow-card transition group-hover:opacity-100">
+                  You can submit to Performance Team once all KPIs are entered.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </article>
 
       {alerts.length ? <article className="rounded-[24px] border border-info/20 bg-surface p-4 transition hover:border-info/35 hover:shadow-card">
@@ -458,27 +507,27 @@ function FocalPointAiAssistancePanel({ submissions }: { submissions: KpiSubmissi
   })
 
   return (
-    <article className="relative overflow-hidden rounded-[28px] border border-primary/20 bg-surface p-5 transition hover:border-primary/35 hover:shadow-card">
+    <article className="ai-panel relative overflow-hidden">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary text-white">
+          <div className="ai-icon h-14 w-14">
             <Sparkles className="h-6 w-6" />
           </div>
           <div>
-            <h2 className="text-xl">AI assistance before submission</h2>
+            <h2 className="ai-heading text-xl">AI assistance before submission</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
               AI-supported quality warnings for insufficient evidence, weak analysis, unclear challenges, generic recommendations, and wording risk.
             </p>
           </div>
         </div>
-        <div className="rounded-full bg-primary-tint px-4 py-2 text-sm font-extrabold text-primary">{warnings.length} warnings</div>
+        <div className="ai-chip">{warnings.length} warnings</div>
       </div>
       <div className="mt-5 grid gap-3 xl:grid-cols-3">
         {(warnings.length ? warnings.slice(0, 6) : [
           { id: 'clean', kpi: 'Submission quality', message: 'No AI quality warnings for the current focal point selection.', score: 92 },
         ]).map((warning, index) => (
           <motion.div
-            className="rounded-[22px] border border-border bg-surface-raised p-4"
+            className="ai-surface p-4"
             key={warning.id}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -489,7 +538,7 @@ function FocalPointAiAssistancePanel({ submissions }: { submissions: KpiSubmissi
                 <p className="truncate text-sm font-extrabold">{warning.kpi}</p>
                 <p className="mt-2 text-xs leading-5 text-muted">{warning.message}</p>
               </div>
-              <span className="rounded-full bg-primary-tint px-2 py-1 font-mono text-xs font-extrabold text-primary">{warning.score}</span>
+              <span className="rounded-full px-2 py-1 font-mono text-xs font-extrabold" style={{ backgroundColor: 'color-mix(in srgb, var(--ai) 12%, transparent)', color: 'var(--ai-strong)' }}>{warning.score}</span>
             </div>
           </motion.div>
         ))}
@@ -971,6 +1020,1187 @@ function SectorCoverageChart({ submissions }: { submissions: KpiSubmission[] }) 
   )
 }
 
+type DgeBand = 'met' | 'risk' | 'below' | 'noData'
+
+function dgeKpiScore(submission?: KpiSubmission) {
+  if (!submission || submission.actualScore === undefined) return undefined
+  return Math.round((submission.actualScore / Math.max(1, submission.targetScore)) * 100)
+}
+
+function dgeBand(score?: number): DgeBand {
+  if (score === undefined) return 'noData'
+  if (score >= 100) return 'met'
+  if (score >= 80) return 'risk'
+  return 'below'
+}
+
+function dgeBandLabel(band: DgeBand) {
+  if (band === 'met') return 'Met / Exceeded'
+  if (band === 'risk') return 'At Risk'
+  if (band === 'below') return 'Below Target'
+  return 'No Data'
+}
+
+function dgeBandClasses(band: DgeBand) {
+  if (band === 'met') return 'bg-success/10 text-success'
+  if (band === 'risk') return 'bg-warning/10 text-warning'
+  if (band === 'below') return 'bg-danger/10 text-danger'
+  return 'bg-surface-raised text-muted'
+}
+
+function dgeKpiCode(id: string) {
+  const numeric = Number(id.replace(/\D/g, '')) || 0
+  return `DGE25${String(numeric).padStart(3, '0')}`
+}
+
+function dgeAggregate(submissions: KpiSubmission[]) {
+  const scores = submissions.map((submission) => dgeKpiScore(submission)).filter((score): score is number => score !== undefined)
+  const average = scores.length ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length) : 0
+  return {
+    average,
+    count: submissions.length,
+    met: submissions.filter((submission) => dgeBand(dgeKpiScore(submission)) === 'met').length,
+    risk: submissions.filter((submission) => dgeBand(dgeKpiScore(submission)) === 'risk').length,
+    below: submissions.filter((submission) => dgeBand(dgeKpiScore(submission)) === 'below').length,
+    noData: submissions.filter((submission) => dgeBand(dgeKpiScore(submission)) === 'noData').length,
+  }
+}
+
+function dgeTrendValues(score?: number, seed = 0) {
+  const base = score ?? 62
+  return [0, 1, 2, 3].map((step) => Math.max(20, Math.min(130, base - 12 + step * 5 + ((seed + step) % 3) * 3)))
+}
+
+function DgeMiniSparkline({ values, tone = 'var(--primary)' }: { values: number[]; tone?: string }) {
+  const max = Math.max(...values, 100)
+  const points = values.map((value, index) => `${index * 32},${30 - (value / max) * 24 + 4}`).join(' ')
+  return (
+    <svg className="h-9 w-24 overflow-visible" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
+      <polyline points={points} fill="none" stroke={tone} strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
+      {values.map((value, index) => (
+        <circle key={`${value}-${index}`} cx={index * 32} cy={30 - (value / max) * 24 + 4} r="2.5" fill={tone} />
+      ))}
+    </svg>
+  )
+}
+
+function DgeCircularScore({ value, label, size = 86 }: { value: number; label: string; size?: number }) {
+  const radius = 18
+  const circumference = 2 * Math.PI * radius
+  const offset = circumference - (Math.min(100, Math.max(0, value)) / 100) * circumference
+  return (
+    <div className="flex items-center gap-3">
+      <div className="relative shrink-0" style={{ height: size, width: size }}>
+        <svg className="-rotate-90" viewBox="0 0 44 44">
+          <circle cx="22" cy="22" r={radius} fill="none" stroke="var(--surface-raised)" strokeWidth="5" />
+          <circle
+            cx="22"
+            cy="22"
+            r={radius}
+            fill="none"
+            stroke="var(--primary)"
+            strokeLinecap="round"
+            strokeWidth="5"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="font-mono text-sm font-extrabold text-primary">{value}%</span>
+        </div>
+      </div>
+      <div>
+        <p className="text-sm font-extrabold text-text">{label}</p>
+        <p className="mt-1 text-xs font-semibold text-muted">Average performance</p>
+      </div>
+    </div>
+  )
+}
+
+function DgeAnalyticMetric({
+  label,
+  value,
+  detail,
+  icon: Icon,
+  tone,
+  index,
+}: {
+  label: string
+  value: string | number
+  detail: string
+  icon: React.ComponentType<{ className?: string }>
+  tone: string
+  index: number
+}) {
+  return (
+    <motion.article
+      className="group rounded-[22px] border border-border bg-surface p-4 shadow-soft transition duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-card"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.035 }}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[15px] font-extrabold leading-5 text-text">{label}</p>
+          <p className="mt-3 font-display text-3xl font-extrabold tracking-tight">{value}</p>
+          <p className="mt-1 text-xs font-semibold text-muted">{detail}</p>
+        </div>
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] transition duration-300 group-hover:-translate-y-0.5 group-hover:scale-105" style={{ backgroundColor: `${tone}18`, color: tone }}>
+          <Icon className="h-5 w-5 transition duration-300 group-hover:scale-110" />
+        </div>
+      </div>
+    </motion.article>
+  )
+}
+
+function DgeAiSummaryPanel({ submissions, sectorName }: { submissions: KpiSubmission[]; sectorName?: string }) {
+  const sectors = mockApi.getSectors()
+  const departments = mockApi.getDepartments()
+  const kpis = mockApi.getKpis()
+  const metrics = dgeAggregate(submissions)
+  const sectorRows = sectors.map((sector) => {
+    const departmentIds = new Set(departments.filter((department) => department.sectorId === sector.id).map((department) => department.id))
+    const kpiIds = new Set(kpis.filter((kpi) => departmentIds.has(kpi.departmentId)).map((kpi) => kpi.id))
+    const sectorSubmissions = submissions.filter((submission) => kpiIds.has(submission.kpiId))
+    return { sector, metrics: dgeAggregate(sectorSubmissions) }
+  }).filter((row) => row.metrics.count)
+  const strongest = [...sectorRows].sort((a, b) => b.metrics.average - a.metrics.average)[0]
+  const weakest = [...sectorRows].sort((a, b) => a.metrics.average - b.metrics.average)[0]
+
+  return (
+    <article className="ai-panel">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex gap-4">
+          <div className="ai-icon h-14 w-14">
+            <Sparkles className="h-6 w-6" />
+          </div>
+          <div>
+            <h2 className="ai-heading text-xl">AI enterprise performance summary</h2>
+            <p className="mt-2 max-w-4xl text-sm leading-6 text-muted">
+              {sectorName
+                ? `${sectorName} is averaging ${metrics.average}% with ${metrics.met} met or exceeded KPI records and ${metrics.below} below target.`
+                : `DGE performance is ${metrics.average}% across the selected cycle. ${strongest?.sector.name ?? 'The leading sector'} is currently strongest, while ${weakest?.sector.name ?? 'one sector'} needs management attention.`}
+            </p>
+          </div>
+        </div>
+        <div className="ai-chip">{metrics.below + metrics.risk} attention items</div>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        {[
+          { label: 'Strongest sector', value: strongest ? `${strongest.sector.name} (${strongest.metrics.average}%)` : 'No scored sector' },
+          { label: 'Needs attention', value: weakest ? `${weakest.sector.name} (${weakest.metrics.below} below target)` : 'No attention item' },
+          { label: 'AI signal', value: `${metrics.noData} no-data KPI records` },
+        ].map((item) => (
+          <div className="ai-surface p-4" key={item.label}>
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted">{item.label}</p>
+            <p className="mt-2 text-sm font-extrabold text-text">{item.value}</p>
+          </div>
+        ))}
+      </div>
+    </article>
+  )
+}
+
+export function LegacyDirectorGeneralAnalyticDashboard() {
+  const { activeCycleId } = useAppStore.getState()
+  const [selectedSectorId, setSelectedSectorId] = useState('')
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState('')
+  const [attention, setAttention] = useState<'all' | 'below' | 'risk' | 'noData' | 'ai'>('all')
+  const [expandedKpiId, setExpandedKpiId] = useState('')
+  const [question, setQuestion] = useState('Summarize enterprise performance')
+
+  const sectors = mockApi.getSectors()
+  const departments = mockApi.getDepartments()
+  const cycleKpis = mockApi.getCycleKpis(activeCycleId)
+  const submissions = mockApi.getSubmissions().filter((submission) => submission.cycleId === activeCycleId)
+  const currentSectorId = selectedSectorId || sectors[0]?.id || ''
+  const currentSector = sectors.find((sector) => sector.id === currentSectorId)
+  const scopedDepartmentIds = new Set(
+    departments
+      .filter((department) => !currentSectorId || department.sectorId === currentSectorId)
+      .filter((department) => !selectedDepartmentId || department.id === selectedDepartmentId)
+      .map((department) => department.id),
+  )
+  const scopedKpis = cycleKpis.filter((kpi) => !currentSectorId || scopedDepartmentIds.has(kpi.departmentId))
+  const scopedKpiIds = new Set(scopedKpis.map((kpi) => kpi.id))
+  const scopedSubmissions = submissions.filter((submission) => scopedKpiIds.has(submission.kpiId))
+  const metrics = dgeAggregate(submissions)
+  const scopedMetrics = dgeAggregate(scopedSubmissions)
+
+  const sectorRows = sectors.map((sector, index) => {
+    const sectorDepartmentIds = new Set(departments.filter((department) => department.sectorId === sector.id).map((department) => department.id))
+    const sectorKpiIds = new Set(cycleKpis.filter((kpi) => sectorDepartmentIds.has(kpi.departmentId)).map((kpi) => kpi.id))
+    const sectorSubmissions = submissions.filter((submission) => sectorKpiIds.has(submission.kpiId))
+    const sectorMetrics = dgeAggregate(sectorSubmissions)
+    return { sector, metrics: sectorMetrics, trend: dgeTrendValues(sectorMetrics.average, index) }
+  })
+
+  const departmentRows = departments
+    .filter((department) => department.sectorId === currentSectorId)
+    .map((department, index) => {
+      const departmentKpiIds = new Set(cycleKpis.filter((kpi) => kpi.departmentId === department.id).map((kpi) => kpi.id))
+      const departmentSubmissions = submissions.filter((submission) => departmentKpiIds.has(submission.kpiId))
+      const departmentMetrics = dgeAggregate(departmentSubmissions)
+      return { department, metrics: departmentMetrics, trend: dgeTrendValues(departmentMetrics.average, index + 2) }
+    })
+
+  const kpiRows = scopedKpis.map((kpi, index) => {
+    const submission = scopedSubmissions.find((item) => item.kpiId === kpi.id)
+    const score = dgeKpiScore(submission)
+    const band = dgeBand(score)
+    const aiScore = submission ? aiReviewScore(submission) : 0
+    const tags = [
+      band === 'below' ? 'Below target' : undefined,
+      band === 'risk' ? 'Close to target' : undefined,
+      band === 'noData' ? 'No data' : undefined,
+      submission && submission.attachments.length === 0 ? 'Evidence risk' : undefined,
+      submission && aiScore < 70 ? 'Weak narrative' : undefined,
+    ].filter((tag): tag is string => Boolean(tag))
+    return { kpi, submission, score, band, aiScore, tags, trend: dgeTrendValues(score, index) }
+  }).filter((row) => {
+    if (attention === 'all') return true
+    if (attention === 'ai') return row.tags.some((tag) => ['Evidence risk', 'Weak narrative'].includes(tag))
+    return row.band === attention
+  })
+
+  const answer = (() => {
+    const below = kpiRows.filter((row) => row.band === 'below').slice(0, 3)
+    if (question.toLowerCase().includes('below')) {
+      return below.length ? `${below.map((row) => row.kpi.name).join(', ')} need immediate review.` : 'No below-target KPIs are visible in the current filter.'
+    }
+    if (question.toLowerCase().includes('sector')) {
+      const strongest = [...sectorRows].sort((a, b) => b.metrics.average - a.metrics.average)[0]
+      return `${strongest?.sector.name ?? 'The selected sector'} is leading with an average score of ${strongest?.metrics.average ?? 0}%.`
+    }
+    return `The selected view contains ${scopedSubmissions.length} KPI records, averaging ${scopedMetrics.average}%, with ${scopedMetrics.met} met/exceeded and ${scopedMetrics.below} below target.`
+  })()
+
+  return (
+    <div className="space-y-5">
+      <section className="raised-card p-6">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary-tint px-3 py-1 text-xs font-extrabold text-primary">
+              <ShieldCheck className="h-4 w-4" />
+              Director General Analytics
+            </div>
+            <h1 className="mt-4 text-[34px] leading-tight">DGE KPI performance command center</h1>
+            <p className="mt-3 max-w-4xl text-sm leading-6 text-muted">
+              Organization-wide KPI performance, sector comparisons, attention risks, AI-assisted explanations, and drill-down KPI records for the selected cycle.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="card px-4 py-3"><p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Sectors</p><p className="font-display text-lg font-extrabold">{sectors.length}</p></div>
+            <div className="card px-4 py-3"><p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Departments</p><p className="font-display text-lg font-extrabold">{departments.length}</p></div>
+            <div className="card px-4 py-3"><p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">KPI Records</p><p className="font-display text-lg font-extrabold">{submissions.length}</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+        <DgeAnalyticMetric label="Average Score" value={`${metrics.average}%`} detail="Across scored KPI records" icon={TrendingUp} tone={tones[0]} index={0} />
+        <DgeAnalyticMetric label="KPI Records" value={metrics.count} detail="Current cycle" icon={Target} tone={tones[1]} index={1} />
+        <DgeAnalyticMetric label="Met / Exceeded" value={metrics.met} detail="Score 100% or above" icon={CheckCircle2} tone="#4A9D5C" index={2} />
+        <DgeAnalyticMetric label="At Risk" value={metrics.risk} detail="Score 80% to 99%" icon={Clock3} tone="#B68A35" index={3} />
+        <DgeAnalyticMetric label="Below Target" value={metrics.below} detail="Score below 80%" icon={Activity} tone="#EA4F49" index={4} />
+        <DgeAnalyticMetric label="No Data" value={metrics.noData} detail="Missing score" icon={FilePenLine} tone="#64748B" index={5} />
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="space-y-5">
+          <DgeAiSummaryPanel submissions={submissions} sectorName={currentSector?.name} />
+
+          <article className="card p-5 transition hover:shadow-card">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <h2 className="text-xl">Sector performance</h2>
+                <p className="mt-2 text-sm text-muted">Select a sector to compare departments and KPI details without leaving the DGE overview.</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {sectors.map((sector) => (
+                  <button
+                    className={`rounded-full px-3 py-1.5 text-sm font-bold transition ${currentSectorId === sector.id ? 'bg-primary text-white' : 'border border-border bg-surface-raised text-text hover:border-primary/40 hover:text-primary'}`}
+                    key={sector.id}
+                    onClick={() => { setSelectedSectorId(sector.id); setSelectedDepartmentId(''); setExpandedKpiId('') }}
+                    type="button"
+                  >
+                    {sector.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(280px,0.85fr)_minmax(0,1.15fr)]">
+              <div className="space-y-2">
+                {sectorRows.map((row) => (
+                  <button
+                    className={`group grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border p-3 text-left transition hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-card ${currentSectorId === row.sector.id ? 'border-primary/40 bg-primary-tint' : 'border-border bg-surface-raised'}`}
+                    key={row.sector.id}
+                    onClick={() => { setSelectedSectorId(row.sector.id); setSelectedDepartmentId(''); setExpandedKpiId('') }}
+                    type="button"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-extrabold">{row.sector.name}</p>
+                      <div className="mt-2 flex items-center gap-3">
+                        <DgeMiniSparkline values={row.trend} tone="var(--primary)" />
+                        <p className="text-xs font-semibold text-muted">{row.metrics.count} records</p>
+                      </div>
+                    </div>
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-surface font-mono text-sm font-extrabold text-primary shadow-soft">
+                      {row.metrics.average}
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <div className="grid content-start gap-3">
+                {departmentRows.map((row) => (
+                  <button
+                    className={`grid w-full gap-3 rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-card ${selectedDepartmentId === row.department.id ? 'border-primary/40 bg-primary-tint' : 'border-border bg-surface-raised'}`}
+                    key={row.department.id}
+                    onClick={() => { setSelectedDepartmentId(selectedDepartmentId === row.department.id ? '' : row.department.id); setExpandedKpiId('') }}
+                    type="button"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-extrabold">{row.department.name}</p>
+                        <p className="mt-1 text-xs text-muted">{row.metrics.count} KPI records · {row.metrics.below} below target</p>
+                      </div>
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${dgeBandClasses(dgeBand(row.metrics.average))}`}>{row.metrics.average}%</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-primary-tint">
+                      <motion.div className="h-full rounded-full bg-primary" initial={{ width: 0 }} animate={{ width: `${Math.min(100, row.metrics.average)}%` }} />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </article>
+
+          <article className="card overflow-hidden">
+            <div className="border-b border-border p-5">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                <div>
+                  <h2 className="text-xl">{selectedDepartmentId ? `${departments.find((department) => department.id === selectedDepartmentId)?.name} KPIs` : 'Sector KPI grid'}</h2>
+                  <p className="mt-2 text-sm text-muted">{kpiRows.length} KPI records shown. Expand a row for narrative and AI context.</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { id: 'all', label: 'All', count: scopedKpis.length, icon: Filter },
+                    { id: 'below', label: 'Below Target', count: scopedSubmissions.filter((submission) => dgeBand(dgeKpiScore(submission)) === 'below').length, icon: Activity },
+                    { id: 'risk', label: 'At Risk', count: scopedSubmissions.filter((submission) => dgeBand(dgeKpiScore(submission)) === 'risk').length, icon: Clock3 },
+                    { id: 'noData', label: 'No Data', count: scopedSubmissions.filter((submission) => dgeBand(dgeKpiScore(submission)) === 'noData').length, icon: FilePenLine },
+                    { id: 'ai', label: 'AI Flags', count: scopedSubmissions.filter((submission) => submission.attachments.length === 0 || aiReviewScore(submission) < 70).length, icon: Sparkles },
+                  ].map((tab) => {
+                    const Icon = tab.icon
+                    return (
+                      <button
+                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-bold transition ${attention === tab.id ? 'bg-primary text-white' : tab.id === 'ai' ? 'ai-chip' : 'border border-border bg-surface-raised text-text hover:border-primary/40 hover:text-primary'}`}
+                        key={tab.id}
+                        onClick={() => setAttention(tab.id as typeof attention)}
+                        type="button"
+                      >
+                        <Icon className="h-4 w-4" />
+                        {tab.label}
+                        <span className={attention === tab.id ? 'rounded-full bg-white/20 px-1.5 py-0.5 text-xs' : 'rounded-full bg-surface px-1.5 py-0.5 text-xs'}>{tab.count}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table>
+                <thead>
+                  <tr>
+                    <th>KPI</th>
+                    <th>Score</th>
+                    <th>Actual / Target</th>
+                    <th>Status</th>
+                    <th>Trend</th>
+                    <th>AI Tags</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {kpiRows.map((row) => (
+                    <Fragment key={row.kpi.id}>
+                      <tr className="cursor-pointer transition hover:bg-primary-tint" key={row.kpi.id} onClick={() => setExpandedKpiId(expandedKpiId === row.kpi.id ? '' : row.kpi.id)}>
+                        <td>
+                          <div className="flex items-center gap-3">
+                            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary-tint text-xs font-extrabold text-primary">{expandedKpiId === row.kpi.id ? '-' : '+'}</span>
+                            <div>
+                              <p className="font-mono text-xs font-extrabold text-primary">{row.kpi.id.replace('kpi-', '').padStart(3, '0')}</p>
+                              <p className="mt-1 font-bold">{row.kpi.name}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td><span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${dgeBandClasses(row.band)}`}>{row.score === undefined ? '-' : `${row.score}%`}</span></td>
+                        <td className="font-mono text-sm font-semibold">{row.submission?.actualScore ?? '-'} / {row.submission?.targetScore ?? '-'}</td>
+                        <td><span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${dgeBandClasses(row.band)}`}>{dgeBandLabel(row.band)}</span></td>
+                        <td><DgeMiniSparkline values={row.trend} tone={row.band === 'below' ? '#EA4F49' : 'var(--primary)'} /></td>
+                        <td>
+                          <div className="flex flex-wrap gap-1.5">
+                            {(row.tags.length ? row.tags : ['Stable']).map((tag) => <span className="ai-chip px-2 py-1 text-[11px]" key={tag}>{tag}</span>)}
+                          </div>
+                        </td>
+                      </tr>
+                      {expandedKpiId === row.kpi.id ? (
+                        <tr>
+                          <td colSpan={6}>
+                            <div className="grid gap-4 rounded-2xl border border-border bg-surface-raised p-4 lg:grid-cols-[0.9fr_1.1fr]">
+                              <DgeAiSummaryPanel submissions={row.submission ? [row.submission] : []} />
+                              <div className="grid gap-3">
+                                <div>
+                                  <h3 className="text-base">Analysis, challenges, and recommendations</h3>
+                                  {row.kpi.questions.map((questionItem) => {
+                                    const answer = row.submission?.answers.find((item) => item.questionId === questionItem.id)?.answer
+                                    return <p className="mt-2 text-sm leading-6 text-muted" key={questionItem.id}><strong className="text-text">{questionItem.label}:</strong> {answer || 'No response entered.'}</p>
+                                  })}
+                                </div>
+                                <div className="rounded-2xl border border-border bg-surface p-4">
+                                  <h3 className="text-base">Performance Team Comment</h3>
+                                  <p className="mt-2 text-sm leading-6 text-muted">{row.submission?.performanceTeamComment || 'No performance team comment recorded.'}</p>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+
+        <aside className="space-y-5">
+          <article className="ai-panel sticky top-24">
+            <div className="flex items-start gap-3">
+              <div className="ai-icon h-12 w-12">
+                <Bot className="h-6 w-6" />
+              </div>
+              <div>
+                <h2 className="ai-heading text-lg">AI KPI assistant</h2>
+                <p className="mt-1 text-xs leading-5 text-muted">Ask about sector movement, below-target KPIs, and enterprise summaries.</p>
+              </div>
+            </div>
+            <div className="mt-4 rounded-2xl border border-[var(--ai-border)] bg-white/80 p-3 dark:bg-white/5">
+              <div className="flex items-center gap-2 rounded-2xl border border-border bg-surface px-3 py-2">
+                <MessageCircle className="h-4 w-4 text-[var(--ai)]" />
+                <input className="min-w-0 flex-1 bg-transparent text-sm outline-none" value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Ask about KPI performance..." />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {['Which sectors are below target?', 'Summarize enterprise performance', 'Which sector is strongest?'].map((prompt) => (
+                  <button className="ai-chip text-left" key={prompt} onClick={() => setQuestion(prompt)} type="button">{prompt}</button>
+                ))}
+              </div>
+            </div>
+            <motion.div className="ai-surface mt-4 p-4" key={answer} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+              <div className="flex items-start gap-3">
+                <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-[var(--ai)]" />
+                <p className="text-sm leading-6 text-text">{answer}</p>
+              </div>
+            </motion.div>
+          </article>
+
+          <article className="card p-5 transition hover:shadow-card">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-tint text-primary">
+                <Eye className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-lg">Executive attention</h2>
+                <p className="text-xs text-muted">Quick risk focus for the selected filter.</p>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-2">
+              {[
+                { label: 'Closest to target', value: kpiRows.filter((row) => row.score !== undefined && row.score >= 80 && row.score < 100).length },
+                { label: 'Far from target', value: kpiRows.filter((row) => row.score !== undefined && row.score < 70).length },
+                { label: 'AI review risk', value: kpiRows.filter((row) => row.aiScore < 70).length },
+              ].map((item) => (
+                <div className="flex items-center justify-between rounded-2xl border border-border bg-surface-raised p-3" key={item.label}>
+                  <span className="text-sm font-bold text-muted">{item.label}</span>
+                  <span className="font-display text-xl font-extrabold text-primary">{item.value}</span>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="card p-5 transition hover:shadow-card">
+            <div className="mb-4 flex items-center gap-3">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              <h2 className="text-lg">Selected scope trend</h2>
+            </div>
+            <div className="h-[220px]">
+              <ResponsiveContainer>
+                <AreaChart data={['Q1', 'Q2', 'Q3', 'Q4'].map((quarter, index) => ({ quarter, score: dgeTrendValues(scopedMetrics.average, index)[index] }))}>
+                  <XAxis dataKey="quarter" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+                  <Tooltip contentStyle={{ background: 'var(--surface-raised)', border: '1px solid var(--border)', borderRadius: 14, color: 'var(--text)' }} />
+                  <Area type="monotone" dataKey="score" stroke="var(--primary)" fill="var(--primary-tint)" strokeWidth={3} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </article>
+        </aside>
+      </section>
+    </div>
+  )
+}
+
+function DirectorGeneralAnalyticDashboard() {
+  type AttentionFilter = 'all' | 'met' | 'risk' | 'below' | 'noData' | 'ai'
+  type SortKey = 'score' | 'department' | 'sector' | 'status' | 'code'
+
+  const { activeCycleId } = useAppStore.getState()
+  const cycles = mockApi.getCycles()
+  const initialCycle = cycles.find((cycle) => cycle.id === activeCycleId) ?? cycles[0]
+  const initialYear = initialCycle?.startDate.slice(0, 4) ?? 'all'
+  const initialQuarter = initialCycle ? `Q${Math.floor(new Date(initialCycle.startDate).getMonth() / 3) + 1}` : 'all'
+  const [selectedCycleId, setSelectedCycleId] = useState(initialCycle?.id ?? activeCycleId)
+  const [yearFilter, setYearFilter] = useState(initialYear)
+  const [quarterFilter, setQuarterFilter] = useState(initialQuarter)
+  const [selectedSectorId, setSelectedSectorId] = useState('')
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState('')
+  const [attention, setAttention] = useState<AttentionFilter>('all')
+  const [sortKey, setSortKey] = useState<SortKey>('score')
+  const [search, setSearch] = useState('')
+  const [expandedKpiId, setExpandedKpiId] = useState('')
+  const [question, setQuestion] = useState('Summarize enterprise performance')
+
+  const activeCycle = cycles.find((cycle) => cycle.id === selectedCycleId) ?? mockApi.getActiveCycle()
+  const sectors = mockApi.getSectors()
+  const departments = mockApi.getDepartments()
+  const users = mockApi.getUsers()
+  const cycleKpis = mockApi.getCycleKpis(activeCycle?.id ?? selectedCycleId)
+  const submissions = mockApi.getSubmissions().filter((submission) => submission.cycleId === (activeCycle?.id ?? selectedCycleId))
+  const submissionByKpi = new Map(submissions.map((submission) => [submission.kpiId, submission]))
+  const metrics = dgeAggregate(submissions)
+  const currentSectorId = selectedSectorId
+  const currentSector = sectors.find((sector) => sector.id === currentSectorId)
+  const sectorDepartments = currentSectorId ? departments.filter((department) => department.sectorId === currentSectorId) : []
+  const selectedDepartment = departments.find((department) => department.id === selectedDepartmentId)
+  const visibleDepartmentIds = new Set(
+    departments
+      .filter((department) => !currentSectorId || department.sectorId === currentSectorId)
+      .filter((department) => !selectedDepartmentId || department.id === selectedDepartmentId)
+      .map((department) => department.id),
+  )
+  const scopedKpis = cycleKpis.filter((kpi) => visibleDepartmentIds.has(kpi.departmentId))
+  const scopedKpiIds = new Set(scopedKpis.map((kpi) => kpi.id))
+  const scopedSubmissions = submissions.filter((submission) => scopedKpiIds.has(submission.kpiId))
+  const scopedMetrics = dgeAggregate(scopedSubmissions)
+
+  const sectorRows = sectors.map((sector, index) => {
+    const departmentIds = new Set(departments.filter((department) => department.sectorId === sector.id).map((department) => department.id))
+    const sectorKpis = cycleKpis.filter((kpi) => departmentIds.has(kpi.departmentId))
+    const sectorKpiIds = new Set(sectorKpis.map((kpi) => kpi.id))
+    const sectorSubmissions = submissions.filter((submission) => sectorKpiIds.has(submission.kpiId))
+    const sectorMetrics = dgeAggregate(sectorSubmissions)
+    return { sector, departments: departmentIds.size, kpis: sectorKpis.length, metrics: sectorMetrics, trend: dgeTrendValues(sectorMetrics.average, index + 1) }
+  }).sort((a, b) => b.metrics.average - a.metrics.average)
+
+  const departmentRows = sectorDepartments.map((department, index) => {
+    const departmentKpis = cycleKpis.filter((kpi) => kpi.departmentId === department.id)
+    const departmentKpiIds = new Set(departmentKpis.map((kpi) => kpi.id))
+    const departmentSubmissions = submissions.filter((submission) => departmentKpiIds.has(submission.kpiId))
+    const departmentMetrics = dgeAggregate(departmentSubmissions)
+    return { department, kpis: departmentKpis.length, metrics: departmentMetrics, trend: dgeTrendValues(departmentMetrics.average, index + 3) }
+  }).sort((a, b) => b.metrics.average - a.metrics.average)
+
+  const availableYears = Array.from(new Set(cycles.map((cycle) => cycle.startDate.slice(0, 4)))).sort()
+  const quarterForCycle = (cycle: Cycle) => `Q${Math.floor(new Date(cycle.startDate).getMonth() / 3) + 1}`
+  const filteredCycles = cycles.filter((cycle) => (yearFilter === 'all' || cycle.startDate.startsWith(yearFilter)) && (quarterFilter === 'all' || quarterForCycle(cycle) === quarterFilter))
+  const cycleOptions = (filteredCycles.length ? filteredCycles : cycles).map((cycle) => ({ value: cycle.id, label: `${cycle.label} · ${cycle.startDate} to ${cycle.endDate}` }))
+  const yearOptions = [{ value: 'all', label: 'All years' }, ...availableYears.map((year) => ({ value: year, label: year }))]
+  const quarterOptions = ['all', 'Q1', 'Q2', 'Q3', 'Q4'].map((quarter) => ({ value: quarter, label: quarter === 'all' ? 'All quarters' : quarter }))
+
+  const tableRows = scopedKpis.map((kpi, index) => {
+    const submission = submissionByKpi.get(kpi.id)
+    const department = departments.find((item) => item.id === kpi.departmentId)
+    const sector = sectors.find((item) => item.id === department?.sectorId)
+    const score = dgeKpiScore(submission)
+    const band = dgeBand(score)
+    const aiScore = submission ? aiReviewScore(submission) : 0
+    const owner = users.find((user) => user.id === submission?.focalPointId)
+    const tags = [
+      band === 'below' ? 'Critical performance' : undefined,
+      band === 'risk' ? 'Watch' : undefined,
+      band === 'noData' ? 'No data' : undefined,
+      submission && submission.attachments.length === 0 ? 'Evidence risk' : undefined,
+      submission && aiScore < 70 ? 'AI quality risk' : undefined,
+    ].filter((tag): tag is string => Boolean(tag))
+    return { kpi, submission, department, sector, score, band, aiScore, owner, tags, trend: dgeTrendValues(score, index) }
+  })
+
+  const filteredRows = tableRows
+    .filter((row) => {
+      if (attention === 'all') return true
+      if (attention === 'ai') return row.tags.some((tag) => ['Evidence risk', 'AI quality risk'].includes(tag))
+      return row.band === attention
+    })
+    .filter((row) => {
+      const needle = search.trim().toLowerCase()
+      if (!needle) return true
+      return [row.kpi.id, row.kpi.name, row.department?.name, row.sector?.name, row.owner?.name].some((value) => value?.toLowerCase().includes(needle))
+    })
+    .sort((a, b) => {
+      if (sortKey === 'score') return (a.score ?? -1) - (b.score ?? -1)
+      if (sortKey === 'department') return (a.department?.name ?? '').localeCompare(b.department?.name ?? '')
+      if (sortKey === 'sector') return (a.sector?.name ?? '').localeCompare(b.sector?.name ?? '')
+      if (sortKey === 'status') return dgeBandLabel(a.band).localeCompare(dgeBandLabel(b.band))
+      return a.kpi.id.localeCompare(b.kpi.id)
+    })
+
+  const distribution = [
+    { name: 'Met / Exceeded', value: metrics.met, color: '#4A9D5C' },
+    { name: 'Watch', value: metrics.risk, color: '#B68A35' },
+    { name: 'Critical', value: metrics.below, color: '#EA4F49' },
+    { name: 'No Data', value: metrics.noData, color: '#94A3B8' },
+  ]
+  const trendData = ['Q1', 'Q2', 'Q3', 'Q4'].map((quarter, index) => ({
+    quarter,
+    Enterprise: dgeTrendValues(metrics.average, index)[index],
+    Selected: dgeTrendValues(scopedMetrics.average, index + 4)[index],
+  }))
+  const departmentComparison = departmentRows.map((row) => ({
+    department: row.department.name.replace('Financial Performance', 'Financial').replace('Enterprise Architecture', 'Enterprise').replace('Strategic Procurement', 'Procurement'),
+    Score: row.metrics.average,
+    Critical: row.metrics.below,
+  }))
+  const answer = (() => {
+    if (question.toLowerCase().includes('critical') || question.toLowerCase().includes('below')) {
+      const critical = filteredRows.filter((row) => row.band === 'below').slice(0, 3)
+      return critical.length ? `Critical KPI focus: ${critical.map((row) => row.kpi.name).join(', ')}.` : 'No critical KPI is visible in the current scope.'
+    }
+    if (question.toLowerCase().includes('sector')) {
+      const strongest = sectorRows[0]
+      return `${strongest?.sector.name ?? 'The leading sector'} is currently strongest at ${strongest?.metrics.average ?? 0}% with ${strongest?.metrics.met ?? 0} met/exceeded KPI records.`
+    }
+    return `${currentSector?.name ?? 'Enterprise overview'} is averaging ${scopedMetrics.average}% across ${scopedSubmissions.length} KPI records. ${scopedMetrics.below} records are critical and ${scopedMetrics.noData} have no data.`
+  })()
+
+  return (
+    <div className="space-y-5">
+      <section className="raised-card p-4">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary-tint px-3 py-1 text-xs font-extrabold text-primary">
+              <ShieldCheck className="h-4 w-4" />
+              Director General Analytics
+            </div>
+            <h1 className="mt-2 text-[26px] leading-tight">DGE KPI performance command center</h1>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">
+              Enterprise KPI analytics across sectors, departments, targets, actuals, and risk signals for senior leadership.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3 xl:w-[650px]">
+            <AppSelect
+              value={yearFilter}
+              onValueChange={(value) => {
+                setYearFilter(value)
+                const nextCycle = cycles.find((cycle) => (value === 'all' || cycle.startDate.startsWith(value)) && (quarterFilter === 'all' || quarterForCycle(cycle) === quarterFilter))
+                if (nextCycle) setSelectedCycleId(nextCycle.id)
+              }}
+              options={yearOptions}
+            />
+            <AppSelect
+              value={quarterFilter}
+              onValueChange={(value) => {
+                setQuarterFilter(value)
+                const nextCycle = cycles.find((cycle) => (yearFilter === 'all' || cycle.startDate.startsWith(yearFilter)) && (value === 'all' || quarterForCycle(cycle) === value))
+                if (nextCycle) setSelectedCycleId(nextCycle.id)
+              }}
+              options={quarterOptions}
+            />
+            <AppSelect value={activeCycle?.id ?? selectedCycleId} onValueChange={setSelectedCycleId} options={cycleOptions} />
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <span className="rounded-full border border-border bg-surface-raised px-3 py-1.5 text-xs font-bold text-muted">{activeCycle?.label ?? 'Selected cycle'}</span>
+          <span className="rounded-full border border-border bg-surface-raised px-3 py-1.5 text-xs font-bold text-muted">{sectors.length} sectors</span>
+          <span className="rounded-full border border-border bg-surface-raised px-3 py-1.5 text-xs font-bold text-muted">{departments.length} departments</span>
+          <span className="rounded-full border border-border bg-surface-raised px-3 py-1.5 text-xs font-bold text-muted">{cycleKpis.length} KPI definitions</span>
+        </div>
+      </section>
+
+      <nav className="flex flex-wrap items-center gap-2 text-sm font-bold text-muted">
+        <button className="text-primary transition hover:text-primary-hover" onClick={() => { setSelectedSectorId(''); setSelectedDepartmentId(''); setExpandedKpiId('') }} type="button">
+          DGE overview
+        </button>
+        {currentSector ? (
+          <>
+            <ChevronRight className="h-4 w-4" />
+            <span className="text-text">{currentSector.name}</span>
+          </>
+        ) : null}
+        {selectedDepartment ? (
+          <>
+            <ChevronRight className="h-4 w-4" />
+            <span className="text-text">{selectedDepartment.name}</span>
+          </>
+        ) : null}
+      </nav>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+        <DgeAnalyticMetric label="Average Score" value={`${metrics.average}%`} detail="Across scored records" icon={TrendingUp} tone={tones[0]} index={0} />
+        <DgeAnalyticMetric label="KPI Records" value={metrics.count} detail="Current cycle" icon={Target} tone={tones[1]} index={1} />
+        <DgeAnalyticMetric label="Met / Exceeded" value={metrics.met} detail="Score 100%+" icon={CheckCircle2} tone="#4A9D5C" index={2} />
+        <DgeAnalyticMetric label="Watch" value={metrics.risk} detail="Score 80-99%" icon={Clock3} tone="#B68A35" index={3} />
+        <DgeAnalyticMetric label="Critical" value={metrics.below} detail="Below 80%" icon={Activity} tone="#EA4F49" index={4} />
+        <DgeAnalyticMetric label="No Data" value={metrics.noData} detail="Missing actual" icon={FilePenLine} tone="#64748B" index={5} />
+      </section>
+
+      <section className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
+        <article className="flex h-full flex-col rounded-[24px] bg-transparent p-0 shadow-none">
+          <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 className="text-xl">Sector performance portfolio</h2>
+              <p className="mt-2 text-sm text-muted">Default view shows all sectors. Select a sector to open department analytics and KPI-level risk records.</p>
+            </div>
+            <button
+              className={`rounded-full px-3 py-1.5 text-sm font-bold transition ${!currentSectorId ? 'bg-primary text-white' : 'border border-border bg-surface text-text hover:border-primary/40 hover:text-primary'}`}
+              onClick={() => { setSelectedSectorId(''); setSelectedDepartmentId(''); setExpandedKpiId('') }}
+              type="button"
+            >
+              DGE overview
+            </button>
+          </div>
+          <div className="grid flex-1 auto-rows-fr gap-4 lg:grid-cols-3">
+            {sectorRows.map((row, index) => (
+              <motion.button
+                className={`group flex h-full flex-col rounded-[22px] border bg-surface p-4 text-left shadow-soft transition hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-card ${currentSectorId === row.sector.id ? 'border-primary/45 ring-2 ring-primary/10' : 'border-border'}`}
+                key={row.sector.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.04 }}
+                onClick={() => { setSelectedSectorId(row.sector.id); setSelectedDepartmentId(''); setExpandedKpiId('') }}
+                type="button"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-lg font-extrabold leading-6 text-text">{row.sector.name}</p>
+                    <p className="mt-2 text-sm font-medium text-muted">Sector performance</p>
+                  </div>
+                  <span className={`rounded-full px-3 py-2 text-sm font-extrabold ${dgeBandClasses(dgeBand(row.metrics.average))}`}>{row.metrics.average}%</span>
+                </div>
+                <div className="mt-4 grid grid-cols-4 gap-1.5">
+                  {row.trend.map((value, trendIndex) => (
+                    <span
+                      className={`h-10 rounded-md ${value >= row.metrics.average ? 'bg-success/25' : value >= 80 ? 'bg-warning/30' : 'bg-danger/20'}`}
+                      key={`${row.sector.id}-${trendIndex}`}
+                    />
+                  ))}
+                </div>
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <p className={`text-sm font-extrabold ${row.trend[3] >= row.trend[0] ? 'text-success' : 'text-danger'}`}>{row.trend[3] >= row.trend[0] ? 'Improving trend' : 'Declining trend'}</p>
+                  <p className="text-sm font-medium text-muted">{row.metrics.count} KPI records</p>
+                </div>
+                <div className="mt-4 flex h-2.5 overflow-hidden rounded-full bg-surface-raised">
+                  <span className="h-full bg-success" style={{ width: `${(row.metrics.met / Math.max(1, row.metrics.count)) * 100}%` }} />
+                  <span className="h-full bg-warning" style={{ width: `${(row.metrics.risk / Math.max(1, row.metrics.count)) * 100}%` }} />
+                  <span className="h-full bg-danger" style={{ width: `${(row.metrics.below / Math.max(1, row.metrics.count)) * 100}%` }} />
+                  <span className="h-full bg-muted" style={{ width: `${(row.metrics.noData / Math.max(1, row.metrics.count)) * 100}%` }} />
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  {[
+                    { label: 'Met', value: row.metrics.met, className: 'text-success' },
+                    { label: 'At Risk', value: row.metrics.risk, className: 'text-warning' },
+                    { label: 'Below', value: row.metrics.below, className: 'text-danger' },
+                    { label: 'No Data', value: row.metrics.noData, className: 'text-muted' },
+                  ].map((item) => (
+                    <div className="rounded-xl border border-border bg-surface-raised p-3" key={item.label}>
+                      <p className={`font-display text-xl font-extrabold ${item.className}`}>{item.value}</p>
+                      <p className="mt-1 text-xs font-medium text-muted">{item.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </motion.button>
+            ))}
+          </div>
+        </article>
+
+        <article className="card h-full p-5 transition hover:shadow-card">
+          <h2 className="text-xl">Performance distribution</h2>
+          <p className="mt-2 text-sm text-muted">Score status mix across the selected cycle.</p>
+          <div className="mt-4 h-[235px]">
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie data={distribution} dataKey="value" nameKey="name" innerRadius={58} outerRadius={88} paddingAngle={3}>
+                  {distribution.map((item) => <Cell key={item.name} fill={item.color} />)}
+                </Pie>
+                <Tooltip contentStyle={{ background: 'var(--surface-raised)', border: '1px solid var(--border)', borderRadius: 14, color: 'var(--text)' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="grid gap-2">
+            {distribution.map((item) => (
+              <div className="flex items-center justify-between rounded-2xl border border-border bg-surface-raised px-3 py-2" key={item.name}>
+                <span className="flex items-center gap-2 text-sm font-bold"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />{item.name}</span>
+                <span className="font-mono text-sm font-extrabold">{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </article>
+      </section>
+
+      {currentSector ? (
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <article className="card p-5 transition hover:shadow-card">
+          <div className="mb-5 flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-xl">{currentSector?.name ?? 'Sector'} departments</h2>
+              <p className="mt-2 text-sm text-muted">Cards update the KPI grid and comparison charts.</p>
+            </div>
+            {selectedDepartment ? <span className="status-pill border-primary/15 bg-primary-tint text-primary">{selectedDepartment.name}</span> : null}
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {departmentRows.map((row, index) => (
+              <motion.button
+                className={`rounded-[20px] border bg-surface p-3.5 text-left shadow-soft transition hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-card ${selectedDepartmentId === row.department.id ? 'border-primary/40 ring-2 ring-primary/10' : 'border-border'}`}
+                key={row.department.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.03 }}
+                onClick={() => { setSelectedDepartmentId(selectedDepartmentId === row.department.id ? '' : row.department.id); setExpandedKpiId('') }}
+                type="button"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[15px] font-extrabold leading-5">{row.department.name}</p>
+                    <p className="mt-1 text-xs font-semibold text-muted">{row.kpis} KPIs / {row.metrics.count} records</p>
+                  </div>
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${dgeBandClasses(dgeBand(row.metrics.average))}`}>{row.metrics.average}%</span>
+                </div>
+                <div className="mt-3 grid grid-cols-4 gap-1">
+                  {row.trend.map((value, trendIndex) => (
+                    <span
+                      className={`h-7 rounded-md ${value >= row.metrics.average ? 'bg-success/25' : value >= 80 ? 'bg-warning/30' : 'bg-danger/20'}`}
+                      key={`${row.department.id}-${trendIndex}`}
+                    />
+                  ))}
+                </div>
+                <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-surface-raised">
+                  <span className="h-full bg-success" style={{ width: `${(row.metrics.met / Math.max(1, row.metrics.count)) * 100}%` }} />
+                  <span className="h-full bg-warning" style={{ width: `${(row.metrics.risk / Math.max(1, row.metrics.count)) * 100}%` }} />
+                  <span className="h-full bg-danger" style={{ width: `${(row.metrics.below / Math.max(1, row.metrics.count)) * 100}%` }} />
+                  <span className="h-full bg-muted" style={{ width: `${(row.metrics.noData / Math.max(1, row.metrics.count)) * 100}%` }} />
+                </div>
+                <div className="mt-3 grid grid-cols-4 gap-1.5">
+                  <span className="rounded-xl bg-success/10 px-2 py-2 text-center text-sm font-extrabold text-success">{row.metrics.met}<small className="block text-[10px] font-bold text-muted">Met</small></span>
+                  <span className="rounded-xl bg-warning/10 px-2 py-2 text-center text-sm font-extrabold text-warning">{row.metrics.risk}<small className="block text-[10px] font-bold text-muted">Watch</small></span>
+                  <span className="rounded-xl bg-danger/10 px-2 py-2 text-center text-sm font-extrabold text-danger">{row.metrics.below}<small className="block text-[10px] font-bold text-muted">Below</small></span>
+                  <span className="rounded-xl bg-surface-raised px-2 py-2 text-center text-sm font-extrabold text-muted">{row.metrics.noData}<small className="block text-[10px] font-bold text-muted">No data</small></span>
+                </div>
+              </motion.button>
+            ))}
+          </div>
+        </article>
+
+        <article className="card p-5 transition hover:shadow-card">
+          <h2 className="text-xl">Department comparison</h2>
+          <p className="mt-2 text-sm text-muted">Average score and critical KPI count inside selected sector.</p>
+          <div className="mt-4 h-[330px]">
+            <ResponsiveContainer>
+              <BarChart data={departmentComparison}>
+                <CartesianGrid stroke="var(--border)" strokeDasharray="3 4" vertical={false} />
+                <XAxis dataKey="department" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+                <Tooltip contentStyle={{ background: 'var(--surface-raised)', border: '1px solid var(--border)', borderRadius: 14, color: 'var(--text)' }} />
+                <Bar dataKey="Score" fill="var(--primary)" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="Critical" fill="#EA4F49" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </article>
+      </section>
+      ) : (
+      <section className="card p-5 transition hover:shadow-card">
+        <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 className="text-xl">Sector performance overview</h2>
+            <p className="mt-2 text-sm text-muted">Enterprise-level sector performance for the selected cycle. Select any sector card above to drill into departments and KPI records.</p>
+          </div>
+          <span className="status-pill border-primary/15 bg-primary-tint text-primary">DGE Overview</span>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {sectorRows.map((row, index) => (
+            <motion.article
+              className="rounded-[22px] border border-border bg-surface p-4 shadow-soft transition hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-card"
+              key={row.sector.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.035 }}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <DgeCircularScore value={row.metrics.average} label={row.sector.name} />
+                <button
+                  className="rounded-full border border-border bg-surface-raised px-3 py-1.5 text-xs font-bold text-primary transition hover:border-primary/40 hover:bg-primary-tint"
+                  onClick={() => { setSelectedSectorId(row.sector.id); setSelectedDepartmentId(''); setExpandedKpiId('') }}
+                  type="button"
+                >
+                  Drill down
+                </button>
+              </div>
+              <div className="mt-4 flex h-2.5 overflow-hidden rounded-full bg-surface-raised">
+                <span className="h-full bg-success" style={{ width: `${(row.metrics.met / Math.max(1, row.metrics.count)) * 100}%` }} />
+                <span className="h-full bg-warning" style={{ width: `${(row.metrics.risk / Math.max(1, row.metrics.count)) * 100}%` }} />
+                <span className="h-full bg-danger" style={{ width: `${(row.metrics.below / Math.max(1, row.metrics.count)) * 100}%` }} />
+                <span className="h-full bg-muted" style={{ width: `${(row.metrics.noData / Math.max(1, row.metrics.count)) * 100}%` }} />
+              </div>
+              <div className="mt-4 grid grid-cols-4 gap-2">
+                <div className="rounded-xl bg-success/10 p-2 text-center"><p className="text-base font-extrabold text-success">{row.metrics.met}</p><p className="text-[10px] font-bold text-muted">Met</p></div>
+                <div className="rounded-xl bg-warning/10 p-2 text-center"><p className="text-base font-extrabold text-warning">{row.metrics.risk}</p><p className="text-[10px] font-bold text-muted">Watch</p></div>
+                <div className="rounded-xl bg-danger/10 p-2 text-center"><p className="text-base font-extrabold text-danger">{row.metrics.below}</p><p className="text-[10px] font-bold text-muted">Critical</p></div>
+                <div className="rounded-xl bg-surface-raised p-2 text-center"><p className="text-base font-extrabold text-muted">{row.metrics.noData}</p><p className="text-[10px] font-bold text-muted">No data</p></div>
+              </div>
+            </motion.article>
+          ))}
+        </div>
+      </section>
+      )}
+
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <article className="card p-5 transition hover:shadow-card">
+          <h2 className="text-xl">Trend intelligence</h2>
+          <p className="mt-2 text-sm text-muted">Enterprise trend compared with the selected sector or department scope.</p>
+          <div className="mt-5 h-[295px]">
+            <ResponsiveContainer>
+              <AreaChart data={trendData}>
+                <XAxis dataKey="quarter" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+                <Tooltip contentStyle={{ background: 'var(--surface-raised)', border: '1px solid var(--border)', borderRadius: 14, color: 'var(--text)' }} />
+                <Area type="monotone" dataKey="Enterprise" stroke="#4A9D5C" fill="#4A9D5C22" strokeWidth={3} />
+                <Area type="monotone" dataKey="Selected" stroke="var(--primary)" fill="var(--primary-tint)" strokeWidth={3} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </article>
+
+        <article className="ai-panel">
+          <div className="flex items-start gap-3">
+            <div className="ai-icon h-12 w-12">
+              <Bot className="h-6 w-6" />
+            </div>
+            <div>
+              <h2 className="ai-heading text-lg">AI KPI assistant</h2>
+              <p className="mt-1 text-xs leading-5 text-muted">Context-aware executive answers for the current dashboard scope.</p>
+            </div>
+          </div>
+          <div className="mt-4 rounded-2xl border border-[var(--ai-border)] bg-white/80 p-3 dark:bg-white/5">
+            <div className="flex items-center gap-2 rounded-2xl border border-border bg-surface px-3 py-2">
+              <MessageCircle className="h-4 w-4 text-[var(--ai)]" />
+              <input className="min-w-0 flex-1 bg-transparent text-sm outline-none" value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Ask about KPI performance..." />
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {['Show critical KPIs', 'Summarize enterprise performance', 'Which sector is strongest?'].map((prompt) => (
+                <button className="ai-chip text-left" key={prompt} onClick={() => setQuestion(prompt)} type="button">{prompt}</button>
+              ))}
+            </div>
+          </div>
+          <motion.div className="ai-surface mt-4 p-4" key={answer} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="flex items-start gap-3">
+              <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-[var(--ai)]" />
+              <p className="text-sm leading-6 text-text">{answer}</p>
+            </div>
+          </motion.div>
+        </article>
+      </section>
+
+      {currentSector ? (
+      <article className="card overflow-hidden">
+        <div className="border-b border-border bg-surface p-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <h2 className="text-xl">KPI analytical register</h2>
+              <p className="mt-2 text-sm text-muted">Ordered KPI records with score, trend, owner, sector, department, and AI risk tags.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex h-10 min-w-[260px] items-center gap-2 rounded-2xl border border-border bg-surface-raised px-3">
+                <Search className="h-4 w-4 text-muted" />
+                <input className="min-w-0 flex-1 bg-transparent text-sm outline-none" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search KPI, department, owner..." />
+              </div>
+              <select className="h-10 rounded-2xl border border-border bg-surface-raised px-3 text-sm font-semibold outline-none" value={sortKey} onChange={(event) => setSortKey(event.target.value as SortKey)}>
+                <option value="score">Sort by score</option>
+                <option value="code">Sort by code</option>
+                <option value="sector">Sort by sector</option>
+                <option value="department">Sort by department</option>
+                <option value="status">Sort by status</option>
+              </select>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {[
+              { id: 'all', label: 'All', count: tableRows.length, icon: Filter },
+              { id: 'met', label: 'Met / Exceeded', count: tableRows.filter((row) => row.band === 'met').length, icon: CheckCircle2 },
+              { id: 'risk', label: 'Watch', count: tableRows.filter((row) => row.band === 'risk').length, icon: Clock3 },
+              { id: 'below', label: 'Critical', count: tableRows.filter((row) => row.band === 'below').length, icon: Activity },
+              { id: 'noData', label: 'No Data', count: tableRows.filter((row) => row.band === 'noData').length, icon: FilePenLine },
+              { id: 'ai', label: 'AI Flags', count: tableRows.filter((row) => row.tags.some((tag) => ['Evidence risk', 'AI quality risk'].includes(tag))).length, icon: Sparkles },
+            ].map((tab) => {
+              const Icon = tab.icon
+              return (
+                <button
+                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-bold transition ${attention === tab.id ? 'bg-primary text-white' : tab.id === 'ai' ? 'ai-chip' : 'border border-border bg-surface-raised text-text hover:border-primary/40 hover:text-primary'}`}
+                  key={tab.id}
+                  onClick={() => setAttention(tab.id as AttentionFilter)}
+                  type="button"
+                >
+                  <Icon className="h-4 w-4" />
+                  {tab.label}
+                  <span className={attention === tab.id ? 'rounded-full bg-white/20 px-1.5 py-0.5 text-xs' : 'rounded-full bg-surface px-1.5 py-0.5 text-xs'}>{tab.count}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1280px] text-left text-sm">
+            <thead className="bg-surface-raised text-xs uppercase tracking-[0.08em] text-muted">
+              <tr className="border-b border-border">
+                <th className="px-4 py-3 font-extrabold">KPI Code</th>
+                <th className="px-4 py-3 font-extrabold">KPI Title</th>
+                <th className="px-4 py-3 font-extrabold">Sector</th>
+                <th className="px-4 py-3 font-extrabold">Department</th>
+                <th className="px-4 py-3 font-extrabold">Target</th>
+                <th className="px-4 py-3 font-extrabold">Actual</th>
+                <th className="px-4 py-3 font-extrabold">Score</th>
+                <th className="px-4 py-3 font-extrabold">Status</th>
+                <th className="px-4 py-3 font-extrabold">Trend</th>
+                <th className="px-4 py-3 font-extrabold">Owner</th>
+                <th className="px-4 py-3 font-extrabold">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border bg-surface">
+              {filteredRows.map((row) => (
+                <Fragment key={row.kpi.id}>
+                  <tr className="transition hover:bg-primary-tint/60">
+                    <td className="px-4 py-4">
+                      <span className="inline-flex rounded-full bg-primary-tint px-2.5 py-1 font-mono text-xs font-extrabold text-primary">{dgeKpiCode(row.kpi.id)}</span>
+                    </td>
+                    <td className="px-4 py-4">
+                      <button className="max-w-[320px] text-left font-extrabold leading-5 text-text transition hover:text-primary" onClick={() => setExpandedKpiId(expandedKpiId === row.kpi.id ? '' : row.kpi.id)} type="button">{row.kpi.name}</button>
+                      <p className="mt-1 line-clamp-1 text-xs text-muted">{row.kpi.category}</p>
+                    </td>
+                    <td className="px-4 py-4"><span className="inline-flex rounded-full border border-border bg-surface-raised px-2.5 py-1 text-xs font-bold">{row.sector?.name ?? '-'}</span></td>
+                    <td className="px-4 py-4"><span className="inline-flex rounded-full border border-border bg-surface-raised px-2.5 py-1 text-xs font-bold">{row.department?.name ?? '-'}</span></td>
+                    <td className="px-4 py-4 font-mono text-sm font-semibold">{row.submission?.targetScore ?? '-'}</td>
+                    <td className="px-4 py-4 font-mono text-sm font-semibold">{row.submission?.actualScore ?? '-'}</td>
+                    <td className="px-4 py-4">
+                      <div className="min-w-[96px]">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-mono text-sm font-extrabold">{row.score === undefined ? '-' : `${row.score}%`}</span>
+                          <span className={`h-2.5 w-2.5 rounded-full ${row.band === 'met' ? 'bg-success' : row.band === 'risk' ? 'bg-warning' : row.band === 'below' ? 'bg-danger' : 'bg-muted'}`} />
+                        </div>
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-raised">
+                          <span className={`block h-full rounded-full ${row.band === 'met' ? 'bg-success' : row.band === 'risk' ? 'bg-warning' : row.band === 'below' ? 'bg-danger' : 'bg-muted'}`} style={{ width: `${Math.min(100, row.score ?? 4)}%` }} />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${dgeBandClasses(row.band)}`}>{dgeBandLabel(row.band)}</span></td>
+                    <td className="px-4 py-4"><DgeMiniSparkline values={row.trend} tone={row.band === 'below' ? '#EA4F49' : 'var(--primary)'} /></td>
+                    <td className="px-4 py-4"><span className="text-sm font-semibold">{row.owner?.name ?? '-'}</span></td>
+                    <td className="px-4 py-4"><button className="rounded-full border border-border bg-surface-raised px-3 py-1.5 text-xs font-bold text-primary transition hover:border-primary/40 hover:bg-primary-tint" onClick={() => setExpandedKpiId(expandedKpiId === row.kpi.id ? '' : row.kpi.id)} type="button">{expandedKpiId === row.kpi.id ? 'Close' : 'Inspect'}</button></td>
+                  </tr>
+                  {expandedKpiId === row.kpi.id ? (
+                    <motion.tr
+                      className="bg-surface-raised"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.22 }}
+                    >
+                      <td className="px-4 py-5" colSpan={11}>
+                        <motion.div
+                          className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr]"
+                          initial={{ opacity: 0, y: 8, scale: 0.995 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          transition={{ duration: 0.24, ease: 'easeOut' }}
+                        >
+                          <div className="space-y-4">
+                            <article className="ai-panel relative overflow-hidden">
+                              <span className="pointer-events-none absolute inset-x-4 top-0 h-px bg-[var(--ai)]/30" />
+                              <div className="flex items-start gap-3">
+                                <div className="ai-icon h-12 w-12"><Sparkles className="h-5 w-5" /></div>
+                                <div>
+                                  <h3 className="ai-heading text-base">AI Summary</h3>
+                                  <div className="mt-3 rounded-2xl border border-[var(--ai-border)] bg-white/70 p-3 dark:bg-white/5">
+                                    <p className="text-sm font-extrabold text-text">Performance Interpretation</p>
+                                    <p className="mt-1 text-sm leading-6 text-muted">
+                                    This KPI is currently {row.score ?? 0}% and {row.trend[3] >= row.trend[0] ? 'improving' : 'stable'} across available quarters. AI tags: {(row.tags.length ? row.tags : ['Stable']).join(', ')}.
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </article>
+                            <article className="rounded-2xl border border-border bg-surface p-4">
+                              <div className="flex items-center gap-2">
+                                <Target className="h-4 w-4 text-primary" />
+                                <h3 className="text-base">KPI Snapshot</h3>
+                              </div>
+                              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                {[
+                                  ['KPI ID', row.kpi.id.replace('kpi-', '').padStart(3, '0')],
+                                  ['KPI Code', dgeKpiCode(row.kpi.id)],
+                                  ['Quarter', activeCycle?.label ?? 'Q4'],
+                                  ['Data Source', 'Synthetic'],
+                                  ['Target', row.submission?.targetScore ?? '-'],
+                                  ['Actual', row.submission?.actualScore ?? '-'],
+                                  ['Score', row.score === undefined ? '-' : `${row.score}%`],
+                                  ['Target Status', dgeBandLabel(row.band)],
+                                ].map(([label, value]) => (
+                                  <div className="rounded-xl border border-border bg-surface-raised p-3 transition hover:border-primary/25 hover:bg-primary-tint/40" key={label}>
+                                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">{label}</p>
+                                    <p className="mt-1 font-mono text-sm font-extrabold text-text">{value}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </article>
+                          </div>
+                          <div className="space-y-4">
+                            <article className="rounded-2xl border border-border bg-surface p-4">
+                              <div className="flex items-center gap-2">
+                                <FilePenLine className="h-4 w-4 text-primary" />
+                                <h3 className="text-base">Analysis, Challenges, And Recommendations</h3>
+                              </div>
+                              <div className="mt-4 space-y-4">
+                                {row.kpi.questions.map((questionItem) => {
+                                  const answerText = row.submission?.answers.find((item) => item.questionId === questionItem.id)?.answer
+                                  return (
+                                    <div className="rounded-xl border border-border bg-surface-raised p-3 transition hover:border-primary/25" key={questionItem.id}>
+                                      <p className="text-sm font-extrabold text-text">{questionItem.label}:</p>
+                                      <p className="mt-2 text-sm leading-6 text-muted">{answerText || `${questionItem.label} narrative is not available for this KPI record.`}</p>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </article>
+                            <article className="rounded-2xl border border-border bg-surface p-4">
+                              <div className="flex items-center gap-2">
+                                <MessageCircle className="h-4 w-4 text-primary" />
+                                <h3 className="text-base">Performance Team Comment</h3>
+                              </div>
+                              <div className="mt-3 rounded-xl border border-border bg-surface-raised p-3 transition hover:border-primary/25">
+                                <p className="text-sm font-extrabold text-text">PM Comment:</p>
+                                <p className="mt-2 text-sm leading-6 text-muted">{row.submission?.performanceTeamComment || 'Returned for clarification'}</p>
+                              </div>
+                            </article>
+                          </div>
+                        </motion.div>
+                      </td>
+                    </motion.tr>
+                  ) : null}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </article>
+      ) : null}
+    </div>
+  )
+}
+
 function scopedSubmissions() {
   const { activeCycleId } = useAppStore.getState()
   const user = mockApi.getCurrentUser()
@@ -1093,7 +2323,7 @@ function PerformanceProgressCard({
       <article className="group flex h-full flex-col overflow-hidden rounded-[20px] border border-border bg-surface px-4 py-4 shadow-[0_8px_20px_rgba(15,23,42,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary-tint/70 hover:shadow-[0_12px_26px_rgba(15,23,42,0.07)]">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-base font-extrabold tracking-[0.01em] text-text">{title}</p>
+            <p className="text-[17px] font-extrabold tracking-[0.01em] text-text">{title}</p>
             <div className="mt-2.5 flex flex-wrap items-end gap-1.5">
               <span className={`font-display text-[30px] font-extrabold leading-none tracking-tight ${primaryRow?.tone ?? 'text-primary'}`}>{metricNumber}</span>
               {metricUnit ? <span className="pb-0.5 text-xs font-extrabold text-muted">{metricUnit}</span> : null}
@@ -1104,8 +2334,8 @@ function PerformanceProgressCard({
               </span>
             </div>
           </div>
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-tint text-primary transition-transform duration-300 group-hover:scale-105">
-            <Icon className="h-4 w-4" />
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-tint text-primary transition-transform duration-300 group-hover:scale-105">
+            <Icon className="h-5 w-5" />
           </div>
         </div>
         <div className="mt-3 space-y-1.5">
@@ -1180,43 +2410,82 @@ function PerformanceCycleSignal({
 
   return (
     <section className={sameYearCycles.length ? 'grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] xl:items-stretch' : ''}>
-      <article className="group flex overflow-hidden rounded-[24px] border border-border bg-surface px-4 py-3 shadow-soft transition hover:border-primary/35 hover:shadow-card">
-        <div className="flex w-full items-center overflow-x-auto">
-          <div className="flex min-w-[980px] items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary-tint text-primary">
-                <CalendarDays className="h-[18px] w-[18px]" />
+      <article className={sameYearCycles.length
+        ? 'group flex h-full overflow-hidden rounded-[24px] border border-border bg-surface px-4 py-3 shadow-soft transition hover:border-primary/35 hover:shadow-card'
+        : 'group overflow-hidden rounded-[24px] border border-border bg-surface px-4 py-3 shadow-soft transition hover:border-primary/35 hover:shadow-card'}
+      >
+        {sameYearCycles.length ? (
+          <div className="flex w-full flex-col justify-center gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary-tint text-primary">
+                  <CalendarDays className="h-[18px] w-[18px]" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-muted">Active Cycle</p>
+                  <p className="mt-1 truncate text-base font-extrabold text-primary">{activeCycle?.label ?? 'Selected cycle'}</p>
+                </div>
               </div>
+              <Link className="btn-primary h-11 shrink-0 rounded-[18px] px-4" to="/trackers/departments">
+                View Details <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+            <div className="h-px bg-border" />
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-success/10 text-success">
+                  <Users className="h-[18px] w-[18px]" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-muted">Focal Points Submitted</p>
+                  <p className="mt-1 text-sm font-bold text-text">{submitted}</p>
+                </div>
+              </div>
+              <div className="hidden h-10 w-px bg-border sm:block" />
               <div>
-                <p className="whitespace-nowrap text-xs font-semibold text-muted">Active Cycle</p>
-                <p className="mt-1 text-sm font-bold text-primary">{activeCycle?.label ?? 'Selected cycle'}</p>
+                <p className="text-xs font-semibold text-muted">Pending Submission</p>
+                <p className="mt-1 text-sm font-bold text-text">{pending}</p>
               </div>
             </div>
-            <div className="h-12 w-px shrink-0 bg-border" />
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-success/10 text-success">
-                <Users className="h-[18px] w-[18px]" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-muted">Focal Points Submitted</p>
-                <p className="mt-1 text-sm font-bold text-text">{submitted}</p>
-              </div>
-            </div>
-            <div className="h-12 w-px shrink-0 bg-border" />
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-warning/10 text-warning">
-                <Clock3 className="h-[18px] w-[18px]" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-muted">Focal Points Pending Submission</p>
-                <p className="mt-1 whitespace-nowrap text-sm font-bold text-text">{pending}</p>
-              </div>
-            </div>
-            <Link className="btn-primary ml-auto h-11 shrink-0 rounded-[18px] px-4" to="/trackers/departments">
-              View Details <ArrowRight className="h-4 w-4" />
-            </Link>
           </div>
-        </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <div className="flex min-w-[980px] items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary-tint text-primary">
+                  <CalendarDays className="h-[18px] w-[18px]" />
+                </div>
+                <div>
+                  <p className="whitespace-nowrap text-xs font-semibold text-muted">Active Cycle</p>
+                  <p className="mt-1 text-sm font-bold text-primary">{activeCycle?.label ?? 'Selected cycle'}</p>
+                </div>
+              </div>
+              <div className="h-12 w-px shrink-0 bg-border" />
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-success/10 text-success">
+                  <Users className="h-[18px] w-[18px]" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-muted">Focal Points Submitted</p>
+                  <p className="mt-1 text-sm font-bold text-text">{submitted}</p>
+                </div>
+              </div>
+              <div className="h-12 w-px shrink-0 bg-border" />
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-warning/10 text-warning">
+                  <Clock3 className="h-[18px] w-[18px]" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-muted">Focal Points Pending Submission</p>
+                  <p className="mt-1 whitespace-nowrap text-sm font-bold text-text">{pending}</p>
+                </div>
+              </div>
+              <Link className="btn-primary ml-auto h-11 shrink-0 rounded-[18px] px-4" to="/trackers/departments">
+                View Details <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        )}
       </article>
 
       {sameYearCycles.length ? (
@@ -1259,23 +2528,23 @@ function PerformanceAiAssistancePanel({ submissions }: { submissions: KpiSubmiss
     { label: 'Weak analysis/challenges/recommendations', value: weakNarrative.length, ids: weakNarrative.map((submission) => submission.kpiId) },
   ]
   return (
-    <article className="card p-5 transition hover:shadow-card">
+    <article className="ai-panel">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-info/10 text-info">
+          <div className="ai-icon h-11 w-11">
             <Sparkles className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-xl font-extrabold">AI Assistance</h2>
+            <h2 className="ai-heading text-xl font-extrabold">AI Assistance</h2>
             <p className="mt-2 text-sm text-muted">Hover each row to reveal KPI IDs behind the warning signal.</p>
           </div>
         </div>
       </div>
       <div className="mt-5 space-y-2">
         {rows.map((row) => (
-          <div className="group relative flex items-center justify-between rounded-2xl border border-border bg-surface-raised px-4 py-3 transition hover:border-primary/30" key={row.label}>
+          <div className="ai-surface group relative flex items-center justify-between px-4 py-3 transition hover:border-[var(--ai)]" key={row.label}>
             <span className="text-sm font-semibold">{row.label}</span>
-            <span className="font-display text-2xl font-extrabold text-primary">{row.value}</span>
+            <span className="font-display text-2xl font-extrabold text-[var(--ai-strong)]">{row.value}</span>
             <div className="pointer-events-none absolute right-4 top-[calc(100%+0.55rem)] z-10 hidden max-w-[340px] rounded-2xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted shadow-card group-hover:block">
               {row.ids.length ? row.ids.map((id) => id.toUpperCase()).join(', ') : 'No KPI IDs flagged.'}
             </div>
@@ -1505,43 +2774,82 @@ function DirectorCycleSubmissionWidget({ submissions, activeCycleId }: { submiss
 
   return (
     <section className={sameYearCycles.length ? 'grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] xl:items-stretch' : ''}>
-      <article className="group flex overflow-hidden rounded-[24px] border border-border bg-surface px-4 py-3 shadow-soft transition hover:border-primary/35 hover:shadow-card">
-        <div className="flex w-full items-center overflow-x-auto">
-          <div className="flex min-w-[980px] items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary-tint text-primary">
-                <CalendarDays className="h-[18px] w-[18px]" />
+      <article className={sameYearCycles.length
+        ? 'group flex h-full overflow-hidden rounded-[24px] border border-border bg-surface px-4 py-3 shadow-soft transition hover:border-primary/35 hover:shadow-card'
+        : 'group overflow-hidden rounded-[24px] border border-border bg-surface px-4 py-3 shadow-soft transition hover:border-primary/35 hover:shadow-card'}
+      >
+        {sameYearCycles.length ? (
+          <div className="flex w-full flex-col justify-center gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary-tint text-primary">
+                  <CalendarDays className="h-[18px] w-[18px]" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-muted">Active Cycle</p>
+                  <p className="mt-1 truncate text-base font-extrabold text-primary">{activeCycle?.label ?? 'Selected cycle'}</p>
+                </div>
               </div>
-              <div>
-                <p className="whitespace-nowrap text-xs font-semibold text-muted">Active Cycle</p>
-                <p className="mt-1 text-sm font-bold text-primary">{activeCycle?.label ?? 'Selected cycle'}</p>
-              </div>
+              <Link className="btn-primary h-11 shrink-0 rounded-[18px] px-4" to="/approval/director">
+                View Details <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
-            <div className="h-12 w-px shrink-0 bg-border" />
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-success/10 text-success">
-                <Users className="h-[18px] w-[18px]" />
+            <div className="h-px bg-border" />
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-success/10 text-success">
+                  <Users className="h-[18px] w-[18px]" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-muted">Focal Point Submissions</p>
+                  <p className="mt-1 text-sm font-bold text-text">{submittedFocalPoints.size} / {focalPointIds.size}</p>
+                </div>
               </div>
+              <div className="hidden h-10 w-px bg-border sm:block" />
               <div>
-                <p className="text-xs font-semibold text-muted">Focal Point Submissions</p>
-                <p className="mt-1 text-sm font-bold text-text">{submittedFocalPoints.size} / {focalPointIds.size}</p>
-              </div>
-            </div>
-            <div className="h-12 w-px shrink-0 bg-border" />
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-warning/10 text-warning">
-                <Clock3 className="h-[18px] w-[18px]" />
-              </div>
-              <div className="min-w-0">
                 <p className="text-xs font-semibold text-muted">Submission Deadline</p>
-                <p className="mt-1 whitespace-nowrap text-sm font-bold text-text">{daysRemaining} days remaining</p>
+                <p className="mt-1 text-sm font-bold text-text">{daysRemaining} days</p>
               </div>
             </div>
-            <Link className="btn-primary ml-auto h-11 shrink-0 rounded-[18px] px-4" to="/approval/director">
-              View Details <ArrowRight className="h-4 w-4" />
-            </Link>
           </div>
-        </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <div className="flex min-w-[980px] items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary-tint text-primary">
+                  <CalendarDays className="h-[18px] w-[18px]" />
+                </div>
+                <div>
+                  <p className="whitespace-nowrap text-xs font-semibold text-muted">Active Cycle</p>
+                  <p className="mt-1 text-sm font-bold text-primary">{activeCycle?.label ?? 'Selected cycle'}</p>
+                </div>
+              </div>
+              <div className="h-12 w-px shrink-0 bg-border" />
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-success/10 text-success">
+                  <Users className="h-[18px] w-[18px]" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-muted">Focal Point Submissions</p>
+                  <p className="mt-1 text-sm font-bold text-text">{submittedFocalPoints.size} / {focalPointIds.size}</p>
+                </div>
+              </div>
+              <div className="h-12 w-px shrink-0 bg-border" />
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-warning/10 text-warning">
+                  <Clock3 className="h-[18px] w-[18px]" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-muted">Submission Deadline</p>
+                  <p className="mt-1 whitespace-nowrap text-sm font-bold text-text">{daysRemaining} days remaining</p>
+                </div>
+              </div>
+              <Link className="btn-primary ml-auto h-11 shrink-0 rounded-[18px] px-4" to="/approval/director">
+                View Details <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        )}
       </article>
 
       {sameYearCycles.length ? (
@@ -1703,22 +3011,22 @@ function DirectorAiAssistanceWidget({ submissions }: { submissions: KpiSubmissio
   ]
 
   return (
-    <article className="card p-5 transition hover:shadow-card">
+    <article className="ai-panel">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-info/10 text-info">
+          <div className="ai-icon h-11 w-11">
             <Sparkles className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-xl font-extrabold">AI Assistance Widget</h2>
+            <h2 className="ai-heading text-xl font-extrabold">AI Assistance Widget</h2>
           </div>
         </div>
       </div>
       <div className="space-y-2">
         {rows.map((row) => (
-          <div className="group relative flex items-center justify-between rounded-2xl border border-border bg-surface-raised px-4 py-3 transition hover:border-primary/30" key={row.label}>
+          <div className="ai-surface group relative flex items-center justify-between px-4 py-3 transition hover:border-[var(--ai)]" key={row.label}>
             <span className="text-sm font-semibold">{row.label}</span>
-            <span className="font-display text-2xl font-extrabold text-primary">{row.value}</span>
+            <span className="font-display text-2xl font-extrabold text-[var(--ai-strong)]">{row.value}</span>
             <div className="pointer-events-none absolute right-4 top-[calc(100%+0.55rem)] z-10 hidden max-w-[340px] rounded-2xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted shadow-card group-hover:block">
               {row.ids.length ? row.ids.map((id) => id.replace(/^kpi-/i, '').toUpperCase()).join(', ') : 'No affected KPI IDs.'}
             </div>
@@ -1825,6 +3133,6 @@ export function DashboardPage() {
   if (user.role === 'focal_point') return <FocalPointDashboard />
   if (user.role === 'performance_team') return <PerformanceDashboard />
   if (user.role === 'department_director') return <DirectorDashboard />
-  if (user.role === 'director_general') return <ExecutiveDashboard orgWide />
+  if (user.role === 'director_general') return <DirectorGeneralAnalyticDashboard />
   return <ExecutiveDashboard />
 }

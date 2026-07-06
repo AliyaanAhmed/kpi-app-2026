@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, Clock3, FileText, History, MessageSquare, RotateCcw, Send, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, Check, FileText, MessageSquare, Send, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Modal } from '../components/ui/Modal'
@@ -6,18 +6,6 @@ import { StatusPill } from '../components/ui/StatusPill'
 import { useToast } from '../context/ToastContext'
 import { mockApi } from '../mockApi/mockApi'
 import { useAppStore } from '../store/appStore'
-
-function titleCaseStatus(value: string) {
-  return value.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
-}
-
-function historyIcon(status: string) {
-  if (status.includes('clarification')) return RotateCcw
-  if (status === 'published') return ShieldCheck
-  if (status === 'director_approved' || status === 'approved_by_director' || status === 'reviewed_by_director' || status === 'reviewed_by_performance_team') return CheckCircle2
-  if (status === 'submitted_to_director' || status === 'with_performance_team' || status === 'submitted_to_performance_team') return Send
-  return Clock3
-}
 
 function WorkflowCommentCard({ title, author, comment }: { title: string; author: string; comment?: string }) {
   return (
@@ -251,54 +239,6 @@ export function KpiDetailPage() {
             </article>
           ) : null}
         </aside>
-      </section>
-      <section className="card p-5">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="eyebrow">Status History</p>
-            <h3 className="mt-1 text-xl font-bold">Governed movement timeline</h3>
-          </div>
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-tint text-primary">
-            <History className="h-5 w-5" />
-          </div>
-        </div>
-        <div className="mt-5 space-y-3">
-          {(submission?.history ?? []).map((event, index) => {
-            const Icon = historyIcon(event.toStatus)
-            return (
-              <div className="group relative rounded-[20px] border border-border bg-surface-raised p-4 transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-card" key={event.id}>
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="flex min-w-0 items-start gap-3">
-                    <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary-tint text-primary transition group-hover:scale-105">
-                      <Icon className="h-5 w-5" />
-                      <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">{index + 1}</span>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="status-pill border-border bg-surface text-muted">{titleCaseStatus(event.fromStatus)}</span>
-                        <span className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-surface text-primary">
-                          <ArrowRight className="h-3.5 w-3.5" />
-                        </span>
-                        <span className="status-pill border-primary/15 bg-primary-tint text-primary">{titleCaseStatus(event.toStatus)}</span>
-                      </div>
-                      <p className="mt-2 text-sm leading-6 text-muted">{event.note || 'Status changed.'}</p>
-                      <p className="mt-2 text-xs font-semibold text-muted">Actor role: {titleCaseStatus(event.actorRole)}</p>
-                    </div>
-                  </div>
-                  <div className="shrink-0 rounded-2xl border border-border bg-surface px-3 py-2 text-right">
-                    <p className="font-mono text-xs font-semibold text-text">{new Date(event.timestamp).toLocaleDateString()}</p>
-                    <p className="mt-1 font-mono text-[11px] text-muted">{new Date(event.timestamp).toLocaleTimeString()}</p>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-          {!submission?.history.length ? (
-            <div className="rounded-2xl border border-border bg-surface-raised p-6 text-center text-sm text-muted">
-              No movement has been recorded for this KPI yet.
-            </div>
-          ) : null}
-        </div>
       </section>
       <Modal
         open={clarificationOpen}

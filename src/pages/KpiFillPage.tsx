@@ -129,8 +129,8 @@ export function KpiFillPage() {
             <h2 className="mt-1 text-[30px] leading-tight">{activeKpi.name}</h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">{activeKpi.description}</p>
           </div>
-          <div className="card p-4">
-            <p className="eyebrow">AI Review Score</p>
+          <div className="ai-panel p-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--ai-strong)]">AI Review Score</p>
             <div className="mt-3 flex items-center justify-between">
               <div>
                 <p className="font-display text-4xl font-extrabold">{aiScore}</p>
@@ -138,10 +138,10 @@ export function KpiFillPage() {
               </div>
               <div className="relative h-16 w-16">
                 <svg className="-rotate-90" viewBox="0 0 64 64">
-                  <circle cx="32" cy="32" r="25" fill="none" stroke="var(--primary-tint)" strokeWidth="7" />
-                  <circle cx="32" cy="32" r="25" fill="none" stroke="var(--primary)" strokeLinecap="round" strokeWidth="7" strokeDasharray="157" strokeDashoffset={157 - (157 * Math.min(100, aiScore)) / 100} />
+                  <circle cx="32" cy="32" r="25" fill="none" stroke="var(--ai-soft)" strokeWidth="7" />
+                  <circle cx="32" cy="32" r="25" fill="none" stroke="var(--ai)" strokeLinecap="round" strokeWidth="7" strokeDasharray="157" strokeDashoffset={157 - (157 * Math.min(100, aiScore)) / 100} />
                 </svg>
-                <Sparkles className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 text-primary" />
+                <Sparkles className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 text-[var(--ai)]" />
               </div>
             </div>
           </div>
@@ -173,7 +173,7 @@ export function KpiFillPage() {
               <div>
                 <h3 className="text-2xl font-extrabold">Evidence document upload</h3>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">Upload KPI evidence first. The local AI review will analyze evidence strength, value consistency, and recommended fields before you complete the KPI details.</p>
-                <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-primary-tint px-3 py-1.5 text-xs font-extrabold text-primary">
+                <div className="ai-chip mt-3 inline-flex items-center gap-2">
                   <Sparkles className="h-3.5 w-3.5" />
                   AI analysis runs for 5 seconds in demo mode
                 </div>
@@ -395,19 +395,19 @@ export function KpiFillPage() {
         </div>
 
         <aside className="space-y-5">
-          <article className="card p-5">
+          <article className="ai-panel">
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl border border-primary/20 bg-primary-tint p-3 text-primary"><WandSparkles className="h-5 w-5" /></div>
-              <div><h3 className="text-lg font-extrabold">Suggested Fields</h3><p className="text-sm text-muted">Generated after evidence analysis.</p></div>
+              <div className="ai-icon h-11 w-11"><WandSparkles className="h-5 w-5" /></div>
+              <div><h3 className="ai-heading text-lg font-extrabold">Suggested Fields</h3><p className="text-sm text-muted">Generated after evidence analysis.</p></div>
             </div>
             {analysisReady && attachments.length ? (
               <div className="mt-4 space-y-3">
-                <div className="rounded-2xl border border-border bg-surface-raised p-3">
+                <div className="ai-surface">
                   <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted">Suggested actual score</p>
-                  <p className="mt-1 font-display text-3xl font-extrabold">{suggestedActual}</p>
+                  <p className="mt-1 font-display text-3xl font-extrabold text-[var(--ai-strong)]">{suggestedActual}</p>
                 </div>
                 {activeKpi.questions.slice(0, 3).map((question) => (
-                  <div className="rounded-2xl border border-border bg-surface-raised p-3" key={question.id}>
+                  <div className="ai-surface" key={question.id}>
                     <p className="text-xs font-bold text-muted">{question.label}</p>
                     <p className="mt-2 line-clamp-3 text-xs leading-5">{suggestedAnswers[question.id]}</p>
                   </div>
@@ -417,7 +417,7 @@ export function KpiFillPage() {
                 </button>
               </div>
             ) : (
-              <div className="mt-4 rounded-2xl border border-border bg-surface-raised p-5 text-sm text-muted">
+              <div className="ai-surface mt-4 p-5 text-sm text-muted">
                 Upload and analyze a document to populate suggested values here.
               </div>
             )}
