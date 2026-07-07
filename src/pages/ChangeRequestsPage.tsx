@@ -112,7 +112,7 @@ function FocalPointChangeRequests() {
     setReason('')
     setProposedValue(type === 'target_score' ? currentValue : '')
     setShowForm(false)
-    showSuccessToast('Change request submitted', 'Admin can now review, approve, or reject the KPI change request.')
+    showSuccessToast('Change request submitted', 'Performance Team can now review, approve, or reject the KPI change request.')
   }
 
   if (!showForm) {
@@ -169,7 +169,7 @@ function FocalPointChangeRequests() {
                           <ClipboardX className="h-6 w-6" />
                         </div>
                         <p className="mt-4 text-base font-extrabold text-text">No change requests yet</p>
-                        <p className="mt-2 text-sm leading-6 text-muted">Create a change request when a KPI target, definition, or detail needs Admin review during Q1 or Q2.</p>
+                        <p className="mt-2 text-sm leading-6 text-muted">Create a change request when a KPI target, definition, or detail needs Performance Team review during Q1 or Q2.</p>
                       </div>
                     </td>
                   </tr>
@@ -187,7 +187,7 @@ function FocalPointChangeRequests() {
       <section className="raised-card p-6">
         <h2 className="text-3xl">Raise Change Request</h2>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-          Request changes to KPI details, definitions, or target scores. CRs are routed to Admin and are only available during Q1 and Q2.
+          Request changes to KPI details, definitions, or target scores. CRs are routed to Performance Team and are only available during Q1 and Q2.
         </p>
       </section>
 
@@ -249,7 +249,7 @@ function FocalPointChangeRequests() {
                   />
                 ) : (
                   <textarea
-                    className="min-h-28 w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+                    className="min-h-28 w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:text-text disabled:opacity-100"
                     disabled={!eligible}
                     placeholder={type === 'definition' ? 'Write the revised KPI definition...' : 'Write the revised KPI name/details...'}
                     value={proposedValue}
@@ -263,7 +263,7 @@ function FocalPointChangeRequests() {
           <div className="mt-4">
             <label className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted">Business Reason</label>
             <textarea
-              className="min-h-28 w-full rounded-xl border border-border bg-surface-raised px-3 py-2 text-sm outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+              className="min-h-28 w-full rounded-xl border border-border bg-surface-raised px-3 py-2 text-sm text-text outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:text-text disabled:opacity-100"
               disabled={!eligible}
               placeholder="Explain why this KPI needs to change during the active cycle..."
               value={reason}
@@ -285,7 +285,7 @@ function FocalPointChangeRequests() {
   )
 }
 
-function AdminChangeRequests() {
+function PerformanceTeamChangeRequests() {
   const { showSuccessToast } = useToast()
   const [statusFilter, setStatusFilter] = useState<'all' | ChangeRequestStatus>('pending')
   const [adminNotes, setAdminNotes] = useState<Record<string, string>>({})
@@ -315,7 +315,7 @@ function AdminChangeRequests() {
       <section className="raised-card p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="eyebrow">Admin Workspace</p>
+            <p className="eyebrow">Performance Team Workspace</p>
             <h2 className="mt-2 text-3xl">Change Request Management</h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
               Review CRs raised by focal points for KPI definitions, details, and target-score adjustments during Q1 and Q2.
@@ -381,7 +381,7 @@ function AdminChangeRequests() {
                   <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6">{request.currentValue}</p>
                 </div>
                 <div className="rounded-2xl border border-border bg-surface-raised p-4">
-                  <p className="eyebrow">Admin Proposed Value</p>
+                  <p className="eyebrow">Performance Team Proposed Value</p>
                   {request.status === 'pending' ? (
                     request.type === 'target_score' ? (
                       <input
@@ -412,7 +412,7 @@ function AdminChangeRequests() {
                 {request.status === 'pending' ? (
                   <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
                     <div>
-                      <label className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted">Admin Note</label>
+                      <label className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted">Performance Team Note</label>
                       <input
                         className="field w-full"
                         placeholder="Optional approval or rejection note..."
@@ -461,6 +461,6 @@ function AdminChangeRequests() {
 export function ChangeRequestsPage() {
   useAppStore()
   const user = mockApi.getCurrentUser()
-  if (user.role === 'admin') return <AdminChangeRequests />
+  if (user.role === 'performance_team') return <PerformanceTeamChangeRequests />
   return <FocalPointChangeRequests />
 }

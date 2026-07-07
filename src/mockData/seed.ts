@@ -34,9 +34,9 @@ const users = [
   { id: 'u-dir-experience', name: 'Digital Experience Director', email: 'experience.director@govdigital.local', role: 'department_director', departmentId: 'dep-experience', sectorId: 'sec-citizen', active: true },
   { id: 'u-dir-support', name: 'Citizen Support Director', email: 'support.director@govdigital.local', role: 'department_director', departmentId: 'dep-support', sectorId: 'sec-citizen', active: true },
   { id: 'u-dir-learning', name: 'Learning & Growth Director', email: 'learning.director@govdigital.local', role: 'department_director', departmentId: 'dep-learning', sectorId: 'sec-citizen', active: true },
-  { id: 'u-fp-data', name: 'Data Governance Focal Point', email: 'data.focal@govdigital.local', role: 'focal_point', departmentId: 'dep-data', departmentIds: ['dep-data', 'dep-cyber', 'dep-enterprise'], sectorId: 'sec-digital', active: true },
-  { id: 'u-fp-cloud', name: 'Cloud Operations Focal Point', email: 'cloud.focal@govdigital.local', role: 'focal_point', departmentId: 'dep-cloud', departmentIds: ['dep-cloud', 'dep-finance', 'dep-experience'], sectorId: 'sec-digital', active: true },
-  { id: 'u-fp-shared', name: 'Shared Services Focal Point', email: 'shared.focal@govdigital.local', role: 'focal_point', departmentId: 'dep-data', departmentIds: ['dep-data', 'dep-cloud', 'dep-procurement', 'dep-support', 'dep-learning'], sectorId: 'sec-digital', active: true },
+  { id: 'u-fp-data', name: 'Gaith - Focal Point 1', email: 'data.focal@govdigital.local', role: 'focal_point', departmentId: 'dep-data', departmentIds: ['dep-data', 'dep-cyber', 'dep-enterprise'], sectorId: 'sec-digital', active: true },
+  { id: 'u-fp-cloud', name: 'Ihab - Focal Point 2', email: 'cloud.focal@govdigital.local', role: 'focal_point', departmentId: 'dep-cloud', departmentIds: ['dep-cloud', 'dep-finance', 'dep-experience'], sectorId: 'sec-digital', active: true },
+  { id: 'u-fp-shared', name: 'Ali Solomoni - Focal Point 3', email: 'shared.focal@govdigital.local', role: 'focal_point', departmentId: 'dep-data', departmentIds: ['dep-data', 'dep-cloud', 'dep-procurement', 'dep-support', 'dep-learning'], sectorId: 'sec-digital', active: true },
 ] satisfies AppData['users']
 
 const teams = departments.map((department, index) => ({

@@ -4,10 +4,9 @@ import { mockApi } from '../mockApi/mockApi'
 import { useAppStore } from '../store/appStore'
 import { Link } from 'react-router-dom'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CircleUserRound, ClipboardX, Search, Sparkles } from 'lucide-react'
+import { CircleUserRound, ClipboardX, LayoutGrid, Search, Sparkles, Table2 } from 'lucide-react'
 import { cn } from '../lib/cn'
-import type { KpiSubmission, SubmissionStatus } from '../domain/types'
-import { useToast } from '../context/ToastContext'
+import type { SubmissionStatus } from '../domain/types'
 
 type KpiStatusFilter =
   | 'all'
@@ -70,10 +69,12 @@ export function KpisPage() {
   const { activeCycleId } = useAppStore()
   const [sectorFilter, setSectorFilter] = useState('all')
   const [departmentFilter, setDepartmentFilter] = useState('all')
+  const [dimensionFilter, setDimensionFilter] = useState('all')
+  const [focalPointFilter, setFocalPointFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState<KpiStatusFilter>('all')
   const [aiFilter, setAiFilter] = useState<AiFilter>('all')
   const [query, setQuery] = useState('')
-  const { showSuccessToast, showErrorToast } = useToast()
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table')
   const user = mockApi.getCurrentUser()
   const roleKpis = mockApi.getKpisForRole(user.role, user.id, activeCycleId)
   const departments = mockApi.getDepartments()
@@ -95,6 +96,8 @@ export function KpisPage() {
   useEffect(() => {
     setSectorFilter(user.role === 'performance_team' && defaultPerformanceSectorId ? defaultPerformanceSectorId : 'all')
     setDepartmentFilter('all')
+    setDimensionFilter('all')
+    setFocalPointFilter('all')
     setStatusFilter('all')
     setAiFilter('all')
     setQuery('')
@@ -120,6 +123,8 @@ export function KpisPage() {
         const status = submission?.status ?? 'active'
         const matchesSector = sectorFilter === 'all' || department?.sectorId === sectorFilter
         const matchesDepartment = departmentFilter === 'all' || kpi.departmentId === departmentFilter
+        const matchesDimension = dimensionFilter === 'all' || kpi.category === dimensionFilter
+        const matchesFocalPoint = focalPointFilter === 'all' || submission?.focalPointId === focalPointFilter
         const matchesQuery = `${kpi.name} ${kpi.description} ${kpi.category} ${department?.name ?? ''}`.toLowerCase().includes(query.toLowerCase())
         const matchesStatus = !['focal_point', 'performance_team', 'department_director'].includes(user.role) || statusMatches(status)
         const aiScore = aiReviewScoreForSubmission(submission)
@@ -129,10 +134,25 @@ export function KpisPage() {
           (aiFilter === 'insufficient_evidence' && !submission?.attachments.length) ||
           (aiFilter === 'evidence_mismatch' && submission?.actualScore !== undefined && submission.actualScore >= submission.targetScore && !submission.attachments.length) ||
           (aiFilter === 'low_quality' && aiScore < 70)
-        return matchesSector && matchesDepartment && matchesQuery && matchesStatus && matchesAi
+        return matchesSector && matchesDepartment && matchesDimension && matchesFocalPoint && matchesQuery && matchesStatus && matchesAi
       }),
-    [aiFilter, departmentFilter, departments, kpis, query, sectorFilter, statusMatches, submissionByKpi, user.role],
+    [aiFilter, departmentFilter, departments, dimensionFilter, focalPointFilter, kpis, query, sectorFilter, statusMatches, submissionByKpi, user.role],
   )
+  const dimensionOptions = useMemo(
+    () => [
+      { value: 'all', label: 'All Dimensions' },
+      ...Array.from(new Set(kpis.map((kpi) => kpi.category))).map((category) => ({ value: category, label: category })),
+    ],
+    [kpis],
+  )
+  const focalPointOptions = useMemo(() => {
+    const users = mockApi.getUsers()
+    const ids = Array.from(new Set(submissions.map((submission) => submission.focalPointId)))
+    return [
+      { value: 'all', label: 'All Focal Points' },
+      ...ids.map((id) => ({ value: id, label: users.find((item) => item.id === id)?.name ?? 'Focal Point' })),
+    ]
+  }, [submissions])
   const departmentTabs = useMemo(
     () => [
       { id: 'all', label: 'All Departments', count: kpis.length },
@@ -180,15 +200,26 @@ export function KpisPage() {
     ],
     [performanceSectorFilteredKpis, sectorFilter, visibleDepartments],
   )
+  const performanceSectorOptions = useMemo(
+    () => performanceSectorTabs.map((tab) => ({ value: tab.id, label: tab.label })),
+    [performanceSectorTabs],
+  )
+  const performanceDepartmentOptions = useMemo(
+    () => performanceDepartmentTabs.map((tab) => ({ value: tab.id, label: tab.label })),
+    [performanceDepartmentTabs],
+  )
   const baseDepartmentFilteredKpis = useMemo(
     () =>
       kpis.filter((kpi) => {
         const department = departments.find((item) => item.id === kpi.departmentId)
+        const submission = submissionByKpi.get(kpi.id)
         const matchesSector = sectorFilter === 'all' || department?.sectorId === sectorFilter
         const matchesDepartment = departmentFilter === 'all' || kpi.departmentId === departmentFilter
-        return matchesSector && matchesDepartment
+        const matchesDimension = dimensionFilter === 'all' || kpi.category === dimensionFilter
+        const matchesFocalPoint = focalPointFilter === 'all' || submission?.focalPointId === focalPointFilter
+        return matchesSector && matchesDepartment && matchesDimension && matchesFocalPoint
       }),
-    [departmentFilter, departments, kpis, sectorFilter],
+    [departmentFilter, departments, dimensionFilter, focalPointFilter, kpis, sectorFilter, submissionByKpi],
   )
   const statusTabs = [
     { id: 'all' as const, label: 'All', count: baseDepartmentFilteredKpis.length },
@@ -275,43 +306,41 @@ export function KpisPage() {
         ? 'bg-primary text-white shadow-soft'
         : 'border border-border bg-surface-raised text-text hover:bg-primary-tint hover:text-primary',
     )
-  const directorPendingVisible = filteredKpis
-    .map((kpi) => submissionByKpi.get(kpi.id))
-    .filter((submission): submission is KpiSubmission => submission !== undefined && submission.status === 'submitted_to_director')
-  const canBulkDirectorReview = directorPendingVisible.length > 0 && directorPendingVisible.every((submission) => submission.directorComment?.trim())
-  const bulkMarkDirectorReviewed = () => {
-    if (!directorPendingVisible.length) {
-      showErrorToast('No pending KPIs', 'There are no submitted KPIs visible for director review.')
-      return
-    }
-    if (!canBulkDirectorReview) {
-      showErrorToast('Director comment required', 'Every KPI needs a Director comment before bulk review.')
-      return
-    }
-    directorPendingVisible.forEach((submission) => mockApi.reviewByDirector(submission.id, submission.directorComment ?? 'Director review completed.'))
-    showSuccessToast('KPIs reviewed', `${directorPendingVisible.length} KPI records were marked as reviewed.`)
-  }
-
   return (
     <section className="space-y-4">
       <div className="px-1">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="eyebrow">Role and cycle filtered</p>
             <h2 className="text-xl">KPI Browser</h2>
-            <p className="mt-1 text-sm text-muted">
-              {user.role === 'department_director' && assignedDepartment
-                ? `${filteredKpis.length} KPI records visible for ${assignedDepartment.name} only.`
-                : `${filteredKpis.length} visible KPI records for the selected cycle.`}
+            <p className="mt-1 text-sm font-normal text-text">
+              {user.role === 'performance_team'
+                ? 'Search, filter, and review KPI records assigned to the Performance Team.'
+                : user.role === 'focal_point'
+                ? 'You can submit to Performance Team once all KPIs are completed.'
+                : user.role === 'department_director' && assignedDepartment
+                  ? `${filteredKpis.length} KPI records visible for ${assignedDepartment.name} only.`
+                  : `${filteredKpis.length} visible KPI records for the selected cycle.`}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {user.role === 'department_director' ? (
-              <button className="btn-primary h-9 text-xs" disabled={!canBulkDirectorReview} onClick={bulkMarkDirectorReviewed} title="All visible pending KPIs need Director comments before bulk review." type="button">
-                Bulk Mark as Reviewed
+            <div className="flex h-9 items-center rounded-full border border-border bg-surface-raised p-1">
+              <button
+                aria-label="Show table view"
+                className={cn('flex h-7 w-7 items-center justify-center rounded-full transition', viewMode === 'table' ? 'bg-primary text-white' : 'text-muted hover:text-primary')}
+                onClick={() => setViewMode('table')}
+                type="button"
+              >
+                <Table2 className="h-4 w-4" />
               </button>
-            ) : null}
-            {user.role !== 'department_director' ? <StatusPill value={user.role} /> : null}
+              <button
+                aria-label="Show card view"
+                className={cn('flex h-7 w-7 items-center justify-center rounded-full transition', viewMode === 'cards' ? 'bg-primary text-white' : 'text-muted hover:text-primary')}
+                onClick={() => setViewMode('cards')}
+                type="button"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
         {user.role === 'focal_point' ? (
@@ -326,88 +355,99 @@ export function KpisPage() {
                 </button>
               ))}
             </div>
-            <div className="flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary-tint px-4 py-3 text-sm">
-              <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              <p className="font-semibold text-text">You can submit to Performance Team once all KPIs are completed.</p>
-            </div>
           </div>
         ) : null}
         {user.role === 'performance_team' ? (
-          <div className="mt-4 space-y-4">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-              <div>
-                <h3 className="text-sm font-extrabold">Performance filters</h3>
-                <p className="mt-1 text-xs text-muted">Select one sector, narrow by department, then filter by workflow movement.</p>
-              </div>
-              <div className="form-field-surface flex h-10 w-full items-center gap-2 px-3 text-muted xl:w-[440px]">
+          <div className="mt-4 space-y-3">
+            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px_220px_220px_220px]">
+              <div className="form-field-surface flex h-10 items-center gap-2 px-3 text-muted">
                 <Search className="h-4 w-4" />
                 <input className="h-full flex-1 bg-transparent text-sm font-medium text-text outline-none" placeholder="Search KPI, category, or department..." value={query} onChange={(event) => setQuery(event.target.value)} />
               </div>
+              <AppSelect
+                value={sectorFilter}
+                onValueChange={(value) => {
+                  setSectorFilter(value)
+                  setDepartmentFilter('all')
+                }}
+                options={performanceSectorOptions}
+              />
+              <AppSelect
+                value={departmentFilter}
+                onValueChange={setDepartmentFilter}
+                options={performanceDepartmentOptions}
+              />
+              <AppSelect
+                value={focalPointFilter}
+                onValueChange={setFocalPointFilter}
+                options={focalPointOptions}
+              />
+              <AppSelect
+                value={dimensionFilter}
+                onValueChange={setDimensionFilter}
+                options={dimensionOptions}
+                placeholder="Dimension"
+              />
             </div>
-            <div className="space-y-4">
-              <div className="grid gap-2 xl:grid-cols-[120px_minmax(0,1fr)] xl:items-start">
-                <span className="pt-2 text-xs font-bold uppercase tracking-[0.12em] text-muted">Sectors</span>
-                <div className="flex flex-wrap gap-2">
-                  {performanceSectorTabs.map((tab) => (
-                    <button
-                      className={tabClass(sectorFilter === tab.id)}
-                      key={tab.id}
-                      onClick={() => {
-                        setSectorFilter(tab.id)
-                        setDepartmentFilter('all')
-                      }}
-                      type="button"
-                    >
-                      {tab.label}
-                      <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', sectorFilter === tab.id ? 'bg-white/20' : 'bg-surface text-muted')}>
-                        {tab.count}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="grid gap-2 xl:grid-cols-[120px_minmax(0,1fr)] xl:items-start">
-                <span className="pt-2 text-xs font-bold uppercase tracking-[0.12em] text-muted">Departments</span>
-                <div className="flex flex-wrap gap-2">
-                  {performanceDepartmentTabs.map((tab) => (
-                    <button className={tabClass(departmentFilter === tab.id)} key={tab.id} onClick={() => setDepartmentFilter(tab.id)} type="button">
-                      {tab.label}
-                      <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', departmentFilter === tab.id ? 'bg-white/20' : 'bg-surface text-muted')}>
-                        {tab.count}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="grid gap-2 xl:grid-cols-[120px_minmax(0,1fr)] xl:items-start">
-                <span className="pt-2 text-xs font-bold uppercase tracking-[0.12em] text-muted">Flow</span>
-                <div className="flex flex-wrap gap-2">
-                {performanceStatusTabs.map((tab) => (
-                  <button className={tabClass(statusFilter === tab.id)} key={tab.id} onClick={() => setStatusFilter(tab.id)} type="button">
-                    {tab.label}
-                    <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', statusFilter === tab.id ? 'bg-white/20' : 'bg-surface text-muted')}>
-                      {tab.count}
-                    </span>
-                  </button>
-                ))}
-                </div>
-              </div>
+            <div className="flex flex-wrap gap-2">
+              {performanceStatusTabs.map((tab) => (
+                <button className={tabClass(statusFilter === tab.id)} key={tab.id} onClick={() => setStatusFilter(tab.id)} type="button">
+                  {tab.label}
+                  <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', statusFilter === tab.id ? 'bg-white/20' : 'bg-surface text-muted')}>
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
         ) : null}
         {user.role !== 'performance_team' ? (
-        <div className={cn('mt-4 grid gap-3', user.role === 'focal_point' ? 'lg:grid-cols-[minmax(0,1fr)_320px]' : ['department_director', 'executive_director', 'director_general'].includes(user.role) ? 'lg:grid-cols-1' : 'lg:grid-cols-[1fr_260px]')}>
+        <div className={cn('mt-4 grid gap-3', user.role === 'focal_point' ? 'lg:grid-cols-[minmax(0,1fr)_240px_320px]' : user.role === 'department_director' ? 'lg:grid-cols-[minmax(0,1fr)_220px_240px]' : user.role === 'director_general' ? 'lg:grid-cols-[minmax(0,1fr)_220px_220px_220px]' : user.role === 'executive_director' ? 'lg:grid-cols-[minmax(0,1fr)_240px]' : 'lg:grid-cols-[1fr_240px_260px]')}>
           <div className="form-field-surface flex h-10 items-center gap-2 px-3 text-muted">
             <Search className="h-4 w-4" />
             <input className="h-full flex-1 bg-transparent text-sm font-medium text-text outline-none" placeholder="Search KPI, category, or department..." value={query} onChange={(event) => setQuery(event.target.value)} />
           </div>
+          {user.role === 'director_general' ? (
+            <>
+              <AppSelect
+                value={sectorFilter}
+                onValueChange={(value) => {
+                  setSectorFilter(value)
+                  setDepartmentFilter('all')
+                }}
+                options={performanceSectorOptions}
+                placeholder="Sector"
+              />
+              <AppSelect
+                value={departmentFilter}
+                onValueChange={setDepartmentFilter}
+                options={performanceDepartmentOptions}
+                placeholder="Department"
+              />
+            </>
+          ) : null}
+          <AppSelect
+            value={dimensionFilter}
+            onValueChange={setDimensionFilter}
+            options={dimensionOptions}
+            placeholder="Dimension"
+          />
+          {user.role === 'department_director' ? (
+            <AppSelect
+              value={focalPointFilter}
+              onValueChange={setFocalPointFilter}
+              options={focalPointOptions}
+              placeholder="Focal Point"
+            />
+          ) : null}
           {user.role === 'focal_point' ? (
             <div className="grid h-10 grid-cols-[auto_minmax(0,1fr)] items-center gap-2">
-              <div className="flex items-center gap-2 text-sm font-extrabold text-primary">
+              <div className="flex items-center gap-2 text-sm font-extrabold text-[var(--ai)]">
                 <Sparkles className="h-4 w-4" />
-                AI
+                AI Filter
               </div>
               <AppSelect
+                className="border-[var(--ai-border)] bg-[var(--ai-soft)] text-[var(--ai-strong)] hover:bg-[var(--ai-soft)]"
                 value={aiFilter}
                 onValueChange={(value) => setAiFilter(value as AiFilter)}
                 options={aiTabs.map((tab) => ({ value: tab.id, label: `${tab.label} (${tab.count})` }))}
@@ -426,44 +466,6 @@ export function KpisPage() {
             />
           ) : null}
         </div>
-        ) : null}
-        {user.role === 'director_general' ? (
-          <div className="mt-3 space-y-3">
-            <div className="grid gap-2 xl:grid-cols-[120px_minmax(0,1fr)] xl:items-start">
-              <span className="pt-2 text-xs font-bold uppercase tracking-[0.12em] text-muted">Sectors</span>
-              <div className="flex flex-wrap gap-2">
-                {sectorTabs.map((tab) => (
-                  <button
-                    className={tabClass(sectorFilter === tab.id)}
-                    key={tab.id}
-                    onClick={() => {
-                      setSectorFilter(tab.id)
-                      setDepartmentFilter('all')
-                    }}
-                    type="button"
-                  >
-                    {tab.label}
-                    <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', sectorFilter === tab.id ? 'bg-white/20' : 'bg-surface text-muted')}>
-                      {tab.count}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="grid gap-2 xl:grid-cols-[120px_minmax(0,1fr)] xl:items-start">
-              <span className="pt-2 text-xs font-bold uppercase tracking-[0.12em] text-muted">Departments</span>
-              <div className="flex flex-wrap gap-2">
-                {performanceDepartmentTabs.map((tab) => (
-                  <button className={tabClass(departmentFilter === tab.id)} key={tab.id} onClick={() => setDepartmentFilter(tab.id)} type="button">
-                    {tab.label}
-                    <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', departmentFilter === tab.id ? 'bg-white/20' : 'bg-surface text-muted')}>
-                      {tab.count}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
         ) : null}
         {user.role === 'executive_director' ? (
           <div className="mt-3 flex flex-wrap gap-2">
@@ -502,17 +504,81 @@ export function KpisPage() {
           </div>
         ) : null}
       </div>
+      {viewMode === 'cards' ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {filteredKpis.map((kpi) => {
+            const assignment = assignmentForKpi(kpi.id, activeCycleId)
+            const submission = submissions.find((item) => item.kpiId === kpi.id)
+            const score = aiReviewScoreForSubmission(submission)
+            const department = departments.find((item) => item.id === kpi.departmentId)
+            const sector = sectors.find((item) => item.id === department?.sectorId)
+            const href = user.role === 'focal_point' ? `/kpis/${kpi.id}/fill` : `/kpis/${kpi.id}`
+            return (
+              <article className="group rounded-[24px] border border-border bg-surface p-4 shadow-soft transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-card" key={kpi.id}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="inline-flex rounded-full bg-primary-tint px-2.5 py-1 font-mono text-xs font-extrabold text-primary">{displayKpiId(kpi.id)}</span>
+                    <Link className="mt-3 line-clamp-2 block text-base font-extrabold text-text transition group-hover:text-primary" to={href}>{kpi.name}</Link>
+                  </div>
+                  <StatusPill value={submission?.status ?? 'active'} />
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded-2xl bg-surface-raised px-3 py-2">
+                    <p className="font-bold text-muted">Department</p>
+                    <p className="mt-1 truncate font-semibold text-text">{department?.name ?? '-'}</p>
+                  </div>
+                  {['executive_director', 'director_general'].includes(user.role) ? (
+                    <div className="rounded-2xl bg-surface-raised px-3 py-2">
+                      <p className="font-bold text-muted">Sector</p>
+                      <p className="mt-1 truncate font-semibold text-text">{sector?.name ?? '-'}</p>
+                    </div>
+                  ) : null}
+                  <div className="rounded-2xl bg-surface-raised px-3 py-2">
+                    <p className="font-bold text-muted">Category</p>
+                    <p className="mt-1 truncate font-semibold text-text">{kpi.category}</p>
+                  </div>
+                  <div className="rounded-2xl bg-surface-raised px-3 py-2">
+                    <p className="font-bold text-muted">AI Score</p>
+                    <p className={cn('mt-1 font-mono text-base font-extrabold', score >= 80 ? 'text-success' : score >= 70 ? 'text-warning' : 'text-danger')}>{score}</p>
+                  </div>
+                  <div className="rounded-2xl bg-surface-raised px-3 py-2">
+                    <p className="font-bold text-muted">Assigned To</p>
+                    <p className="mt-1 truncate font-semibold text-text">{assignment.name}</p>
+                  </div>
+                </div>
+                <Link className="mt-4 flex items-center justify-between border-t border-border pt-3 text-sm font-bold text-primary" to={href}>
+                  Open KPI
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full border border-primary/25 bg-primary-tint">
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                  </span>
+                </Link>
+              </article>
+            )
+          })}
+          {!filteredKpis.length ? (
+            <div className="col-span-full rounded-[24px] border border-border bg-surface p-10 text-center">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-tint text-primary">
+                <ClipboardX className="h-6 w-6" />
+              </div>
+              <p className="mt-4 text-base font-extrabold text-text">No KPIs found</p>
+              <p className="mt-2 text-sm leading-6 text-muted">No KPI records match the selected role, cycle, search, or filters. Try clearing filters or switching cycle.</p>
+            </div>
+          ) : null}
+        </div>
+      ) : (
       <div className="card overflow-auto">
         <table className="w-full min-w-[1000px] text-left text-sm">
           <thead className="sticky top-0 bg-primary-tint text-xs uppercase text-muted">
             {user.role === 'admin' ? (
               <tr><th className="px-4 py-3">ID</th><th>KPI Name</th><th>Department</th><th>Category</th><th>Status</th></tr>
             ) : user.role === 'focal_point' ? (
-              <tr><th className="px-4 py-3">ID</th><th>KPI Name</th><th>AI Review Score</th><th>Is Completed</th><th>Department</th><th>Status</th></tr>
+              <tr><th className="px-4 py-3">KPI ID</th><th>KPI Name</th><th>Department</th><th>Category</th><th>AI Review Score</th><th>Status</th></tr>
+            ) : user.role === 'performance_team' ? (
+              <tr><th className="px-4 py-3">KPI ID</th><th>KPI Name</th><th>Department</th><th>Category</th><th>Assigned To</th><th>AI Review Score</th><th>Status</th></tr>
             ) : user.role === 'department_director' ? (
-              <tr><th className="px-4 py-3">ID</th><th>KPI Name</th><th>AI Score</th><th>Actual</th><th>Target</th><th>Focal Point</th><th>Status</th></tr>
+              <tr><th className="px-4 py-3">KPI ID</th><th>KPI Name</th><th>Category</th><th>Assigned To</th><th>AI Review Score</th><th>Status</th></tr>
             ) : (
-              <tr><th className="px-4 py-3">KPI</th><th>Department</th><th>Assigned To</th><th>Category</th><th>Status</th></tr>
+              <tr><th className="px-4 py-3">KPI ID</th><th>KPI Name</th><th>Sector</th><th>Department</th><th>Assigned To</th><th>Category</th><th>Status</th></tr>
             )}
           </thead>
           <tbody>
@@ -520,6 +586,8 @@ export function KpisPage() {
               const assignment = assignmentForKpi(kpi.id, activeCycleId)
               const submission = submissions.find((item) => item.kpiId === kpi.id)
               const score = aiReviewScoreForSubmission(submission)
+              const department = departments.find((item) => item.id === kpi.departmentId)
+              const sector = sectors.find((item) => item.id === department?.sectorId)
               return (
                 <tr className="border-t border-border hover:bg-primary-tint" key={kpi.id}>
                   {user.role === 'focal_point' ? (
@@ -527,15 +595,37 @@ export function KpisPage() {
                       <td className="px-4 py-3"><span className="rounded-full bg-primary-tint px-2.5 py-1 font-mono text-xs font-extrabold text-primary">{displayKpiId(kpi.id)}</span></td>
                       <td>
                         <Link className="font-semibold text-text transition hover:text-primary" to={`/kpis/${kpi.id}/fill`}>{kpi.name}</Link>
-                        <p className="text-xs text-muted">{kpi.description}</p>
                       </td>
+                      <td>{departments.find((department) => department.id === kpi.departmentId)?.name}</td>
+                      <td>{kpi.category}</td>
                       <td>
-                        <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-mono text-xs font-extrabold', score >= 80 ? 'bg-success/10 text-success' : score >= 70 ? 'bg-warning/10 text-warning' : 'bg-danger/10 text-danger')}>
-                          <Sparkles className="h-3 w-3" /> {score}
+                        <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-sm font-extrabold', score >= 80 ? 'bg-success/10 text-success' : score >= 70 ? 'bg-warning/10 text-warning' : 'bg-danger/10 text-danger')}>
+                          <Sparkles className="h-3.5 w-3.5" /> {score}
                         </span>
                       </td>
-                      <td><span className={cn('rounded-full px-2.5 py-1 text-xs font-bold', (submission?.status === 'draft' || submission?.actualScore !== undefined) ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning')}>{(submission?.status === 'draft' || submission?.actualScore !== undefined) ? 'Completed' : 'Pending Entry'}</span></td>
+                      <td><StatusPill value={submission?.status ?? 'active'} /></td>
+                    </>
+                  ) : user.role === 'performance_team' ? (
+                    <>
+                      <td className="px-4 py-3"><span className="rounded-full bg-primary-tint px-2.5 py-1 font-mono text-xs font-extrabold text-primary">{displayKpiId(kpi.id)}</span></td>
+                      <td>
+                        <Link className="font-semibold text-text transition hover:text-primary" to={`/kpis/${kpi.id}`}>{kpi.name}</Link>
+                      </td>
                       <td>{departments.find((department) => department.id === kpi.departmentId)?.name}</td>
+                      <td>{kpi.category}</td>
+                      <td>
+                        <div className="flex min-w-[210px] items-center gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-tint text-primary">
+                            <CircleUserRound className="h-4 w-4" />
+                          </div>
+                          <p className="min-w-0 truncate text-sm font-semibold">{assignment.name}</p>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-sm font-extrabold', score >= 80 ? 'bg-success/10 text-success' : score >= 70 ? 'bg-warning/10 text-warning' : 'bg-danger/10 text-danger')}>
+                          <Sparkles className="h-3.5 w-3.5" /> {score}
+                        </span>
+                      </td>
                       <td><StatusPill value={submission?.status ?? 'active'} /></td>
                     </>
                   ) : user.role === 'department_director' ? (
@@ -544,23 +634,19 @@ export function KpisPage() {
                       <td>
                         <Link className="font-semibold text-text transition hover:text-primary" to={`/kpis/${kpi.id}`}>{kpi.name}</Link>
                       </td>
-                      <td>
-                        <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-mono text-xs font-extrabold', score >= 80 ? 'bg-success/10 text-success' : score >= 70 ? 'bg-warning/10 text-warning' : 'bg-danger/10 text-danger')}>
-                          <Sparkles className="h-3 w-3" /> {score}
-                        </span>
-                      </td>
-                      <td className="font-mono font-bold">{submission?.actualScore ?? '-'}</td>
-                      <td className="font-mono font-bold">{submission?.targetScore ?? '-'}</td>
+                      <td>{kpi.category}</td>
                       <td>
                         <div className="flex min-w-[190px] items-center gap-3">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-tint text-primary">
                             <CircleUserRound className="h-4 w-4" />
                           </div>
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold">{assignment.name}</p>
-                            <p className="text-xs text-muted">Focal Point</p>
-                          </div>
+                          <p className="min-w-0 truncate text-sm font-semibold">{assignment.name}</p>
                         </div>
+                      </td>
+                      <td>
+                        <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-sm font-extrabold', score >= 80 ? 'bg-success/10 text-success' : score >= 70 ? 'bg-warning/10 text-warning' : 'bg-danger/10 text-danger')}>
+                          <Sparkles className="h-3.5 w-3.5" /> {score}
+                        </span>
                       </td>
                       <td><StatusPill value={submission?.status ?? 'active'} /></td>
                     </>
@@ -569,7 +655,6 @@ export function KpisPage() {
                       <td className="px-4 py-3"><span className="rounded-full bg-primary-tint px-2.5 py-1 font-mono text-xs font-extrabold text-primary">{displayKpiId(kpi.id)}</span></td>
                       <td>
                         <Link className="font-semibold text-text transition hover:text-primary" to={`/kpis/${kpi.id}`}>{kpi.name}</Link>
-                        <p className="text-xs text-muted">{kpi.description}</p>
                       </td>
                       <td>{departments.find((department) => department.id === kpi.departmentId)?.name}</td>
                       <td>{kpi.category}</td>
@@ -577,21 +662,18 @@ export function KpisPage() {
                     </>
                   ) : (
                     <>
-                      <td className="px-4 py-3">
-                        <span className="mb-2 inline-flex rounded-full bg-primary-tint px-2.5 py-1 font-mono text-[11px] font-extrabold text-primary">{displayKpiId(kpi.id)}</span>
-                        <Link className="block font-semibold text-text transition hover:text-primary" to={`/kpis/${kpi.id}`}>{kpi.name}</Link>
-                        <p className="text-xs text-muted">{kpi.description}</p>
+                      <td className="px-4 py-3"><span className="rounded-full bg-primary-tint px-2.5 py-1 font-mono text-xs font-extrabold text-primary">{displayKpiId(kpi.id)}</span></td>
+                      <td>
+                        <Link className="font-semibold text-text transition hover:text-primary" to={`/kpis/${kpi.id}`}>{kpi.name}</Link>
                       </td>
-                      <td>{departments.find((department) => department.id === kpi.departmentId)?.name}</td>
+                      <td>{sector?.name ?? '-'}</td>
+                      <td>{department?.name ?? '-'}</td>
                       <td>
                         <div className="flex min-w-[210px] items-center gap-3">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-tint text-primary">
                             <CircleUserRound className="h-4 w-4" />
                           </div>
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold">{assignment.name}</p>
-                            <p className="text-xs text-muted">{assignment.role}</p>
-                          </div>
+                          <p className="min-w-0 truncate text-sm font-semibold">{assignment.name}</p>
                         </div>
                       </td>
                       <td>{kpi.category}</td>
@@ -603,7 +685,7 @@ export function KpisPage() {
             })}
             {!filteredKpis.length ? (
               <tr>
-                <td className="px-4 py-12" colSpan={user.role === 'admin' ? 5 : user.role === 'focal_point' ? 6 : user.role === 'department_director' ? 7 : 5}>
+                <td className="px-4 py-12" colSpan={user.role === 'admin' ? 5 : user.role === 'performance_team' ? 7 : ['executive_director', 'director_general'].includes(user.role) ? 7 : 6}>
                   <div className="mx-auto flex max-w-md flex-col items-center text-center">
                     <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-tint text-primary">
                       <ClipboardX className="h-6 w-6" />
@@ -617,6 +699,7 @@ export function KpisPage() {
           </tbody>
         </table>
       </div>
+      )}
     </section>
   )
 }

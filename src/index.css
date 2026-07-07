@@ -146,6 +146,12 @@ h2 {
     @apply border border-border bg-surface shadow-soft transition duration-200 hover:border-primary hover:shadow-card;
   }
 
+  .dashboard-page h2 + .text-muted,
+  .dashboard-page h3 + .text-muted {
+    color: var(--text);
+    font-weight: 400;
+  }
+
   .eyebrow {
     @apply text-[11px] font-bold uppercase tracking-[0.16em] text-muted;
   }
@@ -171,7 +177,7 @@ h2 {
   }
 
   .status-pill {
-    @apply inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold;
+    @apply inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-semibold;
   }
 
   .ai-panel {
@@ -199,5 +205,17 @@ h2 {
   .ai-surface {
     @apply rounded-2xl border bg-surface p-3 shadow-soft;
     border-color: color-mix(in srgb, var(--ai-border) 72%, var(--border));
+  }
+
+  form label > span:first-child {
+    color: var(--text);
+  }
+
+  form input:disabled,
+  form textarea:disabled,
+  form select:disabled {
+    color: var(--text);
+    opacity: 1;
+    -webkit-text-fill-color: var(--text);
   }
 }

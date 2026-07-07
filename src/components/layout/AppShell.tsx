@@ -1,6 +1,5 @@
 import {
   BarChart3,
-  Bell,
   BriefcaseBusiness,
   CalendarDays,
   Check,
@@ -12,15 +11,14 @@ import {
   LayoutDashboard,
   ListChecks,
   Moon,
-  Newspaper,
   FilePenLine,
   ShieldCheck,
   Sun,
   Target,
   UserCog,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { mockApi } from '../../mockApi/mockApi'
 import { roleLabel, useAppStore } from '../../store/appStore'
 import { cn } from '../../lib/cn'
@@ -29,14 +27,12 @@ import type { Role } from '../../domain/types'
 const navItems: { label: string; path: string; icon: React.ComponentType<{ className?: string }>; roles: Role[] }[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'focal_point', 'performance_team', 'department_director', 'executive_director', 'director_general'] },
   { label: 'KPIs', path: '/kpis', icon: Target, roles: ['admin', 'focal_point', 'performance_team', 'department_director', 'executive_director', 'director_general'] },
-  { label: 'Change Requests', path: '/change-requests', icon: FilePenLine, roles: ['admin', 'focal_point'] },
-  { label: 'Published KPIs', path: '/published', icon: Newspaper, roles: ['executive_director', 'director_general'] },
-  { label: 'Validation Queue', path: '/approval/validate', icon: ListChecks, roles: ['performance_team'] },
+  { label: 'Change Requests', path: '/change-requests', icon: FilePenLine, roles: ['focal_point', 'performance_team'] },
+  { label: 'Review Queue', path: '/approval/validate', icon: ListChecks, roles: ['performance_team'] },
   { label: 'Approval Queue', path: '/approval/queue', icon: ShieldCheck, roles: ['department_director'] },
   { label: 'Trackers', path: '/trackers/departments', icon: BarChart3, roles: ['performance_team'] },
   { label: 'Reports', path: '/reports', icon: BarChart3, roles: ['admin', 'performance_team', 'department_director', 'executive_director', 'director_general'] },
   { label: 'Audit Log', path: '/activity', icon: History, roles: ['admin', 'performance_team'] },
-  { label: 'Notifications', path: '/notifications', icon: Bell, roles: ['admin', 'focal_point', 'performance_team', 'department_director', 'executive_director', 'director_general'] },
   { label: 'KPI Templates', path: '/admin/templates', icon: Gauge, roles: ['admin'] },
   { label: 'KPI Definitions', path: '/admin/kpi-definitions', icon: Target, roles: ['admin'] },
   { label: 'Cycle Management', path: '/admin/cycles', icon: CalendarDays, roles: ['admin'] },
@@ -58,10 +54,13 @@ const demoRoleUserIds = [
 
 export function AppShell() {
   const location = useLocation()
+  const navigate = useNavigate()
   const { activeUserId, activeCycleId, setActiveUser, setActiveCycle, theme, setTheme, sidebarCollapsed, setSidebarCollapsed } =
     useAppStore()
   const [roleMenuOpen, setRoleMenuOpen] = useState(false)
   const [cycleMenuOpen, setCycleMenuOpen] = useState(false)
+  const roleMenuRef = useRef<HTMLDivElement>(null)
+  const cycleMenuRef = useRef<HTMLDivElement>(null)
   const users = mockApi.getUsers()
   const cycles = mockApi.getCycles()
   const user = users.find((item) => item.id === activeUserId) ?? users[0]
@@ -80,7 +79,7 @@ export function AppShell() {
         const kpi = mockApi.getKpi(submission.kpiId)
         return kpi?.departmentId === user.departmentId
       }).length,
-      '/change-requests': user.role === 'admin'
+      '/change-requests': user.role === 'performance_team'
         ? mockApi.getChangeRequests().filter((request) => request.status === 'pending').length
         : mockApi.getChangeRequests().filter((request) => request.focalPointId === user.id && request.status === 'pending').length,
     }
@@ -90,6 +89,15 @@ export function AppShell() {
     setRoleMenuOpen(false)
     setCycleMenuOpen(false)
   }, [location.pathname])
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      const target = event.target as Node
+      if (roleMenuOpen && roleMenuRef.current && !roleMenuRef.current.contains(target)) setRoleMenuOpen(false)
+      if (cycleMenuOpen && cycleMenuRef.current && !cycleMenuRef.current.contains(target)) setCycleMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handlePointerDown)
+    return () => document.removeEventListener('mousedown', handlePointerDown)
+  }, [cycleMenuOpen, roleMenuOpen])
 
   return (
     <div className="min-h-screen bg-bg text-text">
@@ -162,7 +170,7 @@ export function AppShell() {
 
       <div className={cn('transition-all', sidebarCollapsed ? 'pl-[76px]' : 'pl-[280px]')}>
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-white px-6 backdrop-blur dark:bg-surface">
-          <div className="relative">
+          <div className="relative" ref={cycleMenuRef}>
             <button
               className="flex h-11 min-w-[230px] items-center gap-2 rounded-2xl border border-border bg-surface px-2.5 text-left transition hover:bg-surface-raised hover:shadow-soft"
               onClick={() => setCycleMenuOpen((open) => !open)}
@@ -222,8 +230,7 @@ export function AppShell() {
           <button className="btn-secondary h-10 w-10 rounded-full p-0" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
-          <button className="btn-secondary h-10 w-10 rounded-full p-0" aria-label="Notifications"><Bell className="h-4 w-4" /></button>
-          <div className="relative">
+          <div className="relative" ref={roleMenuRef}>
             <button
               className="flex h-11 min-w-[240px] items-center gap-3 rounded-2xl border border-border bg-surface px-3 text-left transition hover:bg-surface-raised hover:shadow-soft"
               onClick={() => setRoleMenuOpen((open) => !open)}
@@ -265,6 +272,7 @@ export function AppShell() {
                         onClick={() => {
                           setActiveUser(option.id)
                           setRoleMenuOpen(false)
+                          navigate('/dashboard')
                         }}
                         type="button"
                       >
@@ -272,8 +280,8 @@ export function AppShell() {
                           <CircleUserRound className="h-4 w-4" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold leading-tight">{roleLabel(option.role)}</p>
-                          <p className="mt-1 text-xs leading-tight text-muted">{option.name}</p>
+                          <p className="text-sm font-semibold leading-tight">{option.name}</p>
+                          <p className="mt-1 text-xs leading-tight text-muted">{roleLabel(option.role)}</p>
                         </div>
                         {active ? <Check className="mt-1 h-4 w-4 shrink-0" /> : null}
                       </button>

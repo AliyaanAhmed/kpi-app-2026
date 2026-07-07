@@ -2,10 +2,13 @@ import { Download, FileText, ShieldCheck, TrendingUp, type LucideIcon } from 'lu
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts'
 import { mockApi } from '../mockApi/mockApi'
 import { useAppStore } from '../store/appStore'
+import { GovDigitalPerformanceReport } from './reports/GovDigitalPerformanceReport'
 
 export function ReportsPage() {
   const { activeCycleId } = useAppStore()
   const user = mockApi.getCurrentUser()
+  if (user.role === 'director_general' || user.role === 'executive_director') return <GovDigitalPerformanceReport />
+
   const submissions = mockApi.getVisibleSubmissionsForRole(user.role, user.id, activeCycleId)
   const visibleKpis = mockApi.getKpisForRole(user.role, user.id, activeCycleId)
   const visibleDepartmentIds = new Set(visibleKpis.map((kpi) => kpi.departmentId))

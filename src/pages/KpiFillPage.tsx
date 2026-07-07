@@ -31,6 +31,7 @@ export function KpiFillPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysisReady, setAnalysisReady] = useState(Boolean(submission?.attachments.length))
   const [openAttachmentId, setOpenAttachmentId] = useState<string | null>(null)
+  const [selectedSuggestions, setSelectedSuggestions] = useState<Record<string, boolean>>({ actualScore: true })
   const canEdit = submission
     ? ['active', 'draft', 'clarification_focal', 'clarification_director', 'clarification_from_performance', 'clarification_from_director'].includes(submission.status)
     : false
@@ -112,15 +113,30 @@ export function KpiFillPage() {
         : 'The submitted actual reflects measurable progress for the selected cycle, supported by the uploaded evidence package and department-level operating updates.'
     return map
   }, {})
+  const scoreResult = actualScore > activeSubmission.targetScore ? 'Target exceeded' : actualScore === activeSubmission.targetScore ? 'Target met' : 'Below target score'
 
   function applyAiSuggestion() {
-    setValue('actualScore', suggestedActual, { shouldDirty: true, shouldValidate: true })
-    Object.entries(suggestedAnswers).forEach(([questionId, value]) => setValue(`answers.${questionId}`, value, { shouldDirty: true, shouldValidate: true }))
+    if (selectedSuggestions.actualScore) setValue('actualScore', suggestedActual, { shouldDirty: true, shouldValidate: true })
+    Object.entries(suggestedAnswers).forEach(([questionId, value]) => {
+      if (selectedSuggestions[questionId] ?? true) setValue(`answers.${questionId}`, value, { shouldDirty: true, shouldValidate: true })
+    })
   }
+
+  const actionButtons = (
+    <>
+      {isClarificationRecord ? (
+        <button className="btn-primary" type="button" disabled={!canEdit} onClick={handleSubmit(resubmitToPerformanceTeam)}>
+          <CheckCircle2 className="h-4 w-4" /> Resubmit to Performance Team
+        </button>
+      ) : (
+        <button className="btn-secondary" type="button" disabled={!canEdit} onClick={handleSubmit(saveDraft)}><Save className="h-4 w-4" /> Save Draft</button>
+      )}
+    </>
+  )
 
   return (
     <form className="space-y-5" onSubmit={handleSubmit(saveDraft)}>
-      <Link className="inline-flex items-center gap-2 text-sm font-semibold text-muted hover:text-primary" to={`/kpis/${activeKpi.id}`}><ArrowLeft className="h-4 w-4" /> Back to detail</Link>
+      <Link className="inline-flex items-center gap-2 text-sm font-semibold text-muted hover:text-primary" to="/kpis"><ArrowLeft className="h-4 w-4" /> Back to KPI Grid</Link>
       <section className="raised-card p-6">
         <div className="grid gap-5 xl:grid-cols-[1fr_360px] xl:items-start">
           <div>
@@ -134,7 +150,6 @@ export function KpiFillPage() {
             <div className="mt-3 flex items-center justify-between">
               <div>
                 <p className="font-display text-4xl font-extrabold">{aiScore}</p>
-                <p className="text-sm text-muted">Read-only quality signal</p>
               </div>
               <div className="relative h-16 w-16">
                 <svg className="-rotate-90" viewBox="0 0 64 64">
@@ -143,6 +158,9 @@ export function KpiFillPage() {
                 </svg>
                 <Sparkles className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 text-[var(--ai)]" />
               </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              {actionButtons}
             </div>
           </div>
         </div>
@@ -356,7 +374,7 @@ export function KpiFillPage() {
                 />
                 <div className="mt-3 flex items-center gap-2">
                   {targetMet ? <CheckCircle2 className="h-4 w-4 text-success" /> : <XCircle className="h-4 w-4 text-danger" />}
-                  <p className={`text-xs font-bold ${targetMet ? 'text-success' : 'text-danger'}`}>{targetMet ? 'Target met or exceeded' : 'Below target score'}</p>
+                  <p className={`text-xs font-bold ${targetMet ? 'text-success' : 'text-danger'}`}>{scoreResult}</p>
                 </div>
                 {errors.actualScore ? <span className="text-xs text-danger">{errors.actualScore.message}</span> : null}
               </label>
@@ -375,13 +393,13 @@ export function KpiFillPage() {
             </div>
             {activeKpi.questions.map((question) => (
               <label className="block" key={question.id}>
-                <span className="mb-1 block text-sm font-semibold">{question.label}</span>
+                <span className="mb-1 block text-sm font-bold text-text">{question.label}</span>
                 <Controller
                   control={control}
                   name={`answers.${question.id}`}
                   render={({ field }) => (
-                    <textarea
-                      className="form-field-surface min-h-32 w-full px-4 py-3 text-sm leading-6 outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:opacity-60"
+                  <textarea
+                      className="form-field-surface min-h-32 w-full px-4 py-3 text-sm font-normal leading-6 text-text outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:text-text disabled:opacity-100"
                       disabled={!canEdit}
                       {...field}
                     />
@@ -403,13 +421,23 @@ export function KpiFillPage() {
             {analysisReady && attachments.length ? (
               <div className="mt-4 space-y-3">
                 <div className="ai-surface">
-                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted">Suggested actual score</p>
-                  <p className="mt-1 font-display text-3xl font-extrabold text-[var(--ai-strong)]">{suggestedActual}</p>
+                  <label className="flex items-start gap-3">
+                    <input className="mt-1 accent-[var(--ai)]" type="checkbox" checked={selectedSuggestions.actualScore ?? true} onChange={(event) => setSelectedSuggestions((current) => ({ ...current, actualScore: event.target.checked }))} />
+                    <span>
+                      <span className="text-xs font-bold uppercase tracking-[0.12em] text-muted">Suggested actual score</span>
+                      <span className="mt-1 block font-display text-3xl font-extrabold text-[var(--ai-strong)]">{suggestedActual}</span>
+                    </span>
+                  </label>
                 </div>
                 {activeKpi.questions.slice(0, 3).map((question) => (
                   <div className="ai-surface" key={question.id}>
-                    <p className="text-xs font-bold text-muted">{question.label}</p>
-                    <p className="mt-2 line-clamp-3 text-xs leading-5">{suggestedAnswers[question.id]}</p>
+                    <label className="flex items-start gap-3">
+                      <input className="mt-1 accent-[var(--ai)]" type="checkbox" checked={selectedSuggestions[question.id] ?? true} onChange={(event) => setSelectedSuggestions((current) => ({ ...current, [question.id]: event.target.checked }))} />
+                      <span>
+                        <span className="text-xs font-bold text-muted">{question.label}</span>
+                        <span className="mt-2 line-clamp-3 block text-xs leading-5">{suggestedAnswers[question.id]}</span>
+                      </span>
+                    </label>
                   </div>
                 ))}
                 <button className="btn-primary w-full justify-center" disabled={!canEdit} onClick={applyAiSuggestion} type="button">
@@ -444,14 +472,10 @@ export function KpiFillPage() {
         </aside>
       </section>
 
-      <div className="sticky bottom-4 flex justify-end gap-3 rounded-2xl border border-border bg-surface-raised p-3 shadow-card">
-        {isClarificationRecord ? (
-          <button className="btn-primary" type="button" disabled={!canEdit} onClick={handleSubmit(resubmitToPerformanceTeam)}>
-            <CheckCircle2 className="h-4 w-4" /> Resubmit to Performance Team
-          </button>
-        ) : (
-          <button className="btn-secondary" type="button" disabled={!canEdit} onClick={handleSubmit(saveDraft)}><Save className="h-4 w-4" /> Save Draft</button>
-        )}
+      <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
+        <div className="flex justify-end gap-3 rounded-2xl border border-border bg-surface-raised p-3 shadow-card">
+          {actionButtons}
+        </div>
       </div>
     </form>
   )

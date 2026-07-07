@@ -13,8 +13,6 @@ import { DashboardPage } from './pages/DashboardPage'
 import { KpiDetailPage } from './pages/KpiDetailPage'
 import { KpiFillPage } from './pages/KpiFillPage'
 import { KpisPage } from './pages/KpisPage'
-import { NotificationsPage } from './pages/NotificationsPage'
-import { PublishedKpisPage } from './pages/PublishedKpisPage'
 import { ReportsPage } from './pages/ReportsPage'
 import { TrackersPage } from './pages/TrackersPage'
 
@@ -29,14 +27,14 @@ export const router = createBrowserRouter([
       { path: 'kpis/:id', element: <KpiDetailPage /> },
       { path: 'kpis/:id/fill', element: <RouteGuard roles={['focal_point']}><KpiFillPage /></RouteGuard> },
       { path: 'kpis/:id/edit', element: <RouteGuard roles={['focal_point']}><KpiFillPage /></RouteGuard> },
-      { path: 'published', element: <RouteGuard roles={['executive_director', 'director_general']}><PublishedKpisPage /></RouteGuard> },
+      { path: 'published', element: <Navigate to="/kpis" replace /> },
       { path: 'approval/validate', element: <RouteGuard roles={['performance_team']}><ApprovalQueuePage mode="performance" /></RouteGuard> },
       { path: 'approval/queue', element: <RouteGuard roles={['department_director']}><ApprovalQueuePage mode="director" /></RouteGuard> },
       { path: 'trackers/departments', element: <RouteGuard roles={['performance_team']}><TrackersPage /></RouteGuard> },
       { path: 'reports', element: <RouteGuard roles={['admin', 'performance_team', 'department_director', 'executive_director', 'director_general']}><ReportsPage /></RouteGuard> },
       { path: 'activity', element: <RouteGuard roles={['admin', 'performance_team']}><ActivityLogPage /></RouteGuard> },
-      { path: 'notifications', element: <NotificationsPage /> },
-      { path: 'change-requests', element: <RouteGuard roles={['admin', 'focal_point']}><ChangeRequestsPage /></RouteGuard> },
+      { path: 'notifications', element: <Navigate to="/dashboard" replace /> },
+      { path: 'change-requests', element: <RouteGuard roles={['focal_point', 'performance_team']}><ChangeRequestsPage /></RouteGuard> },
       { path: 'admin/templates', element: <RouteGuard roles={['admin']}><AdminTemplatesPage /></RouteGuard> },
       { path: 'admin/kpi-definitions', element: <RouteGuard roles={['admin']}><AdminKpiDefinitionsPage /></RouteGuard> },
       { path: 'admin/cycles', element: <RouteGuard roles={['admin']}><AdminCyclesPage /></RouteGuard> },

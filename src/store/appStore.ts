@@ -3,6 +3,19 @@ import { persist } from 'zustand/middleware'
 import type { AppData, ChangeRequest, Cycle, Kpi, KpiSubmission, KpiTemplate, Role, User } from '../domain/types'
 import { seedData } from '../mockData/seed'
 
+const demoFocalPointNames: Record<string, string> = {
+  'u-fp-data': 'Gaith - Focal Point 1',
+  'u-fp-cloud': 'Ihab - Focal Point 2',
+  'u-fp-shared': 'Ali Solomoni - Focal Point 3',
+}
+
+function normalizeDemoData(data: AppData): AppData {
+  return {
+    ...data,
+    users: data.users.map((user) => demoFocalPointNames[user.id] ? { ...user, name: demoFocalPointNames[user.id] } : user),
+  }
+}
+
 interface AppStore {
   data: AppData
   activeUserId: string
@@ -96,13 +109,14 @@ export const useAppStore = create<AppStore>()(
     }),
     {
       name: 'kpi-app-state',
-      version: 9,
+      version: 10,
       migrate: (persistedState) => {
         const persisted = persistedState as Partial<AppStore> | undefined
+        const persistedData = persisted?.data ? normalizeDemoData(persisted.data) : seedData
         const activeUserId = seedData.users.some((user) => user.id === persisted?.activeUserId) ? persisted?.activeUserId : 'u-admin'
         const activeCycleId = seedData.cycles.some((cycle) => cycle.id === persisted?.activeCycleId) ? persisted?.activeCycleId : 'cycle-q2-2026'
         return {
-          data: seedData,
+          data: persistedData,
           activeUserId,
           activeCycleId,
           theme: persisted?.theme ?? 'dark',

@@ -375,13 +375,10 @@ export const mockApi = {
     if (!submission || !['reviewed_by_performance_team', 'with_performance_team'].includes(submission.status)) return submission
     return stamp(submission, 'submitted_to_director', note)
   },
-  reviewByDirector: (id: string, comment: string, note = 'Reviewed by Department Director') => {
+  reviewByDirector: (id: string, note = 'Reviewed by Department Director') => {
     const submission = data().submissions.find((item) => item.id === id)
-    const trimmedComment = comment.trim()
-    if (!submission || submission.status !== 'submitted_to_director' || !trimmedComment) return submission
-    const updated: KpiSubmission = { ...submission, directorComment: trimmedComment }
-    useAppStore.getState().upsertSubmission(updated)
-    return stamp(updated, 'reviewed_by_director', note)
+    if (!submission || submission.status !== 'submitted_to_director') return submission
+    return stamp(submission, 'reviewed_by_director', note)
   },
   approveKpi: (id: string, note = 'Approved by Department Director') => {
     const submission = data().submissions.find((item) => item.id === id)
