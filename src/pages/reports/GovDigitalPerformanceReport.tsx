@@ -1,16 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   BarChart as BarChartIcon,
   Bot,
   ChevronRight,
   Database,
+  MessageCircle,
+  Send,
   Search,
   Sparkles,
   Target,
   TrendingUp,
+  X,
 } from 'lucide-react'
-import { Bar, BarChart, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { AppSelect } from '../../components/ui/AppSelect'
 import { cn } from '../../lib/cn'
 
@@ -122,6 +124,7 @@ export function GovDigitalPerformanceReport() {
   const [expandedKpi, setExpandedKpi] = useState('')
   const [query, setQuery] = useState('')
   const [answer, setAnswer] = useState('Select a suggested question or ask one in your own words.')
+  const [assistantOpen, setAssistantOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -150,17 +153,28 @@ export function GovDigitalPerformanceReport() {
     () => records.filter((row) => (!sector || row.sector === sector) && (!department || row.department === department)),
     [department, records, sector],
   )
-  const metrics = useMemo(() => aggregate(scopedRows), [scopedRows])
-  const sectorItems = useMemo(() => byField(filterRows(records, { quarter: activeQuarter }), 'sector'), [activeQuarter, records])
+  const sectorItems = useMemo(() => byField(filterRows(records, { quarter: activeQuarter }), 'sector', records), [activeQuarter, records])
   const selectedDgeSector = dgeSector || sectorItems[0]?.name || ''
   const selectedDgeDepartments = useMemo(() => {
     if (!selectedDgeSector) return []
-    return byField(filterRows(records, { quarter: activeQuarter, sector: selectedDgeSector }), 'department')
+    return byField(filterRows(records, { quarter: activeQuarter, sector: selectedDgeSector }), 'department', filterRows(records, { sector: selectedDgeSector }))
   }, [activeQuarter, records, selectedDgeSector])
-  const departmentItems = useMemo(() => (sector ? byField(filterRows(records, { quarter: activeQuarter, sector }), 'department') : []), [activeQuarter, records, sector])
+  const departmentItems = useMemo(() => (sector ? byField(filterRows(records, { quarter: activeQuarter, sector }), 'department', filterRows(records, { sector })) : []), [activeQuarter, records, sector])
+  const selectedDepartmentMetric = useMemo(
+    () => (department ? byField(filterRows(records, { quarter: activeQuarter, sector }), 'department', filterRows(records, { sector })).find((item) => item.name === department) : undefined),
+    [activeQuarter, department, records, sector],
+  )
   const kpis = useMemo(() => byKpi(scopedRows).sort(sortKpis), [scopedRows])
   const attentionCounts = useMemo(() => getAttentionCounts(kpis), [kpis])
   const visibleKpis = useMemo(() => filterKpisByAttention(kpis, attention), [attention, kpis])
+
+  useEffect(() => {
+    if (screen !== 'department' || !department) return
+    const timer = window.setTimeout(() => {
+      document.getElementById('report-kpi-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 180)
+    return () => window.clearTimeout(timer)
+  }, [department, screen])
 
   if (isLoading) {
     return <ReportSkeleton />
@@ -228,35 +242,31 @@ export function GovDigitalPerformanceReport() {
 
       <Breadcrumb screen={screen} sector={sector} department={department} onDge={goDge} onSector={() => goSector(sector)} />
 
-      <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="space-y-5">
         <main className="min-w-0 space-y-5">
           <ScreenHeader screen={screen} sector={sector} department={department} quarter={activeQuarter} />
-          <SummaryCards metrics={metrics} kpis={kpis} rows={allQuarterScopedRows.length ? allQuarterScopedRows : scopedRows} />
+          <SummaryCards rows={scopedRows} />
 
           <AnimatePresence mode="wait">
             {screen === 'dge' && (
               <motion.div animate={{ opacity: 1, y: 0 }} className="space-y-5" exit={{ opacity: 0, y: 8 }} initial={{ opacity: 0, y: 8 }} key="dge">
                 <AiSummaryPanel text={aiSummary('dge', scopedRows)} />
                 <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-                  <div className="space-y-4">
+                  <div className="space-y-4 xl:col-span-full">
                     <SectionTitle title="DGE Performance" subtitle="Sector performance overview across the selected reporting period." />
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                       {sectorItems.map((item) => <EntityCard item={item} key={item.name} onClick={() => goSector(item.name)} type="sector" />)}
                     </div>
                   </div>
-                  <PerformanceDistribution metrics={metrics} />
                 </section>
-                <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
-                  <DgePerformancePanel
-                    departments={selectedDgeDepartments}
-                    onDepartment={(name) => goDepartment(selectedDgeSector, name)}
-                    onSector={(name) => setDgeSector(name)}
-                    selectedSector={selectedDgeSector}
-                    sectors={sectorItems}
-                  />
-                  <TrendPanel rows={scopedRows} title="Sector Performance" />
-                </section>
-                <KpiWorkspace attention={attention} counts={attentionCounts} kpis={visibleKpis} onAttention={setAttention} onExpand={setExpandedKpi} expandedKpi={expandedKpi} totalCount={kpis.length} />
+                <SectorPerformancePanel
+                  departments={selectedDgeDepartments}
+                  onDepartment={(name) => goDepartment(selectedDgeSector, name)}
+                  onSector={(name) => setDgeSector(name)}
+                  selectedSector={selectedDgeSector}
+                  sectors={sectorItems}
+                />
+                <RankingPanel items={sectorItems} />
               </motion.div>
             )}
 
@@ -264,40 +274,37 @@ export function GovDigitalPerformanceReport() {
               <motion.div animate={{ opacity: 1, y: 0 }} className="space-y-5" exit={{ opacity: 0, y: 8 }} initial={{ opacity: 0, y: 8 }} key="sector">
                 <AiSummaryPanel text={aiSummary('sector', scopedRows)} />
                 <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-                  <div className="space-y-4">
+                  <div className="space-y-4 xl:col-span-full">
                     <SectionTitle title="Department portfolio" subtitle="Select a department to open KPI-level detail and narratives." />
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                       {departmentItems.map((item) => <EntityCard item={item} key={item.name} onClick={() => goDepartment(sector, item.name)} type="department" />)}
                     </div>
                   </div>
-                  <PerformanceDistribution metrics={metrics} />
                 </section>
-                <section className="grid gap-5 xl:grid-cols-2">
-                  <TrendPanel rows={allQuarterScopedRows} title="Quarter Trend" />
-                  <RankingPanel items={departmentItems} />
-                </section>
-                <KpiWorkspace attention={attention} counts={attentionCounts} kpis={visibleKpis} onAttention={setAttention} onExpand={setExpandedKpi} expandedKpi={expandedKpi} totalCount={kpis.length} />
+                <RankingPanel items={departmentItems} />
               </motion.div>
             )}
 
             {screen === 'department' && (
               <motion.div animate={{ opacity: 1, y: 0 }} className="space-y-5" exit={{ opacity: 0, y: 8 }} initial={{ opacity: 0, y: 8 }} key="department">
                 <AiSummaryPanel text={aiSummary('department', scopedRows)} />
-                <section className="grid gap-5 xl:grid-cols-2">
-                  <TrendPanel rows={allQuarterScopedRows} title="Quarter Trend" />
-                  <PerformanceDistribution metrics={metrics} />
+                <section className="space-y-3">
+                  <SectionTitle title="Department portfolio" subtitle="Sector departments remain visible while the selected department filters the KPI table." />
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {departmentItems.map((item) => (
+                      <EntityCard active={item.name === selectedDepartmentMetric?.name} item={item} key={item.name} onClick={() => goDepartment(sector, item.name)} type="department" />
+                    ))}
+                  </div>
                 </section>
                 <KpiWorkspace attention={attention} counts={attentionCounts} kpis={visibleKpis} onAttention={setAttention} onExpand={setExpandedKpi} expandedKpi={expandedKpi} totalCount={kpis.length} />
+                <AdditionalAnalysis allRows={allQuarterScopedRows} rows={scopedRows} />
+                <RankingPanel items={departmentItems} />
               </motion.div>
             )}
           </AnimatePresence>
         </main>
-
-        <aside className="space-y-5">
-          <AiQueryPanel answer={answer} context={contextLabel(screen, sector, department)} onAsk={ask} query={query} setQuery={setQuery} />
-          <AdditionalAnalysis rows={scopedRows} allRows={allQuarterScopedRows} />
-        </aside>
       </div>
+      <FloatingAiAssistant answer={answer} context={contextLabel(screen, sector, department)} isOpen={assistantOpen} onAsk={ask} onClose={() => setAssistantOpen(false)} onOpen={() => setAssistantOpen(true)} query={query} setQuery={setQuery} />
     </div>
   )
 }
@@ -355,21 +362,26 @@ function ScreenHeader({ screen, sector, department, quarter }: { screen: Screen;
   )
 }
 
-function SummaryCards({ metrics, kpis, rows }: { metrics: AggregateMetric; kpis: KpiMetric[]; rows: KpiRecord[] }) {
+function SummaryCards({ rows }: { rows: KpiRecord[] }) {
+  const kpis = byKpi(rows)
+  const snapshot = kpiSnapshot(kpis)
   const trendSet = metricTrendSet(rows)
-  const closest = closestKpiToTarget(kpis)
   return (
     <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <MetricCard label="Average Score" value={pct(metrics.avg)} note="Selected scope performance" tone="primary" trend={trendSet.average} />
-      <MetricCard label="KPI Records" value={String(kpis.length || metrics.count)} note={`${metrics.count.toLocaleString()} quarter rows`} tone="info" />
-      <MetricCard label="Met / Exceeded" value={metrics.met.toLocaleString()} note="At or above assigned target" tone="success" trend={trendSet.metRate} />
-      <MetricCard label="Closest to Target" value={closest ? kpiCode(closest.selected) : 'N/A'} note={closest ? `${pct(closest.selected.score)} score` : 'No scored KPIs'} tone="warning" />
+      <MetricCard label="Total KPIs" value={snapshot.total.toLocaleString()} note="Current report scope" tone="info" />
+      <MetricCard label="Average Score" value={pct(snapshot.avg)} note="Across selected KPI results" tone="primary" trend={trendSet.average} />
+      <MetricCard label="Target Met" value={snapshot.met.toLocaleString()} note="Score 100% or above" tone="success" trend={trendSet.metRate} />
+      <MetricCard label="Below Target" value={snapshot.below.toLocaleString()} note="Score below 80%" tone="danger" />
+      <MetricCard label="Increasing Trend" value={snapshot.increasing.toLocaleString()} note="Year trend moving up" tone="success" />
+      <MetricCard label="Decreasing Trend" value={snapshot.decreasing.toLocaleString()} note="Year trend moving down" tone="danger" />
+      <MetricCard label="Close to Target" value={snapshot.closeToTarget.toLocaleString()} note="Score 90% to 99%" tone="warning" />
+      <MetricCard label="Far from Target" value={snapshot.farFromTarget.toLocaleString()} note="Score below 70%" tone="danger" />
     </section>
   )
 }
 
-function MetricCard({ label, value, note, tone, trend }: { label: string; value: string; note: string; tone: 'primary' | 'success' | 'warning' | 'info'; trend?: Array<number | null> }) {
-  const Icon = tone === 'success' ? TrendingUp : tone === 'warning' ? Target : tone === 'info' ? Database : BarChartIcon
+function MetricCard({ label, value, note, tone, trend }: { label: string; value: string; note: string; tone: 'primary' | 'success' | 'warning' | 'info' | 'danger' | 'neutral'; trend?: Array<number | null> }) {
+  const Icon = tone === 'success' ? TrendingUp : tone === 'warning' || tone === 'danger' ? Target : tone === 'info' ? Database : BarChartIcon
   return (
     <article className="group rounded-[22px] border border-border bg-surface p-4 shadow-soft transition hover:border-primary/35 hover:shadow-card">
       <div className="flex items-start justify-between gap-4">
@@ -410,13 +422,14 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle: string }) 
   )
 }
 
-function EntityCard({ item, type, onClick }: { item: EntityMetric; type: 'sector' | 'department'; onClick(): void }) {
+function EntityCard({ item, type, onClick, active }: { item: EntityMetric; type: 'sector' | 'department'; onClick(): void; active?: boolean }) {
   const trend = trendDirection(item.trend)
   return (
     <button
       className={cn(
         'group w-full rounded-[22px] border border-border bg-surface p-4 text-left shadow-soft transition hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-card',
         type === 'department' && 'rounded-[20px] p-3.5',
+        active && 'border-primary bg-primary-tint ring-1 ring-primary/20',
       )}
       onClick={onClick}
       type="button"
@@ -428,13 +441,13 @@ function EntityCard({ item, type, onClick }: { item: EntityMetric; type: 'sector
         </div>
         <span className={cn('rounded-full px-3 py-1 text-sm font-extrabold', bandPillClass(performanceBand(item.avg)))}>{pct(item.avg)}</span>
       </div>
-      <div className="mt-4 flex items-center justify-between gap-3">
+      <TrendBars values={item.trend} />
+      <div className="mt-3 flex items-center justify-between gap-3">
         <span className={cn('text-sm font-extrabold', trend === 'up' ? 'text-success' : trend === 'down' ? 'text-danger' : 'text-warning')}>{trendText(trend)}</span>
         <span className="text-sm font-semibold text-muted">{item.count.toLocaleString()} KPI records</span>
       </div>
-      <TrendBars values={item.trend} />
       <DistributionBar metrics={item} />
-      <div className="mt-4 grid grid-cols-2 gap-2">
+      <div className="mt-3 grid grid-cols-2 gap-2">
         <MiniMetric label="Met" value={item.met} tone="success" />
         <MiniMetric label="At Risk" value={item.risk} tone="warning" />
         <MiniMetric label="Below" value={item.below} tone="danger" />
@@ -444,87 +457,64 @@ function EntityCard({ item, type, onClick }: { item: EntityMetric; type: 'sector
   )
 }
 
-function PerformanceDistribution({ metrics }: { metrics: AggregateMetric }) {
-  const data = [
-    { name: 'Met', value: metrics.met, fill: 'var(--success)' },
-    { name: 'At Risk', value: metrics.risk, fill: 'var(--warning)' },
-    { name: 'Below', value: metrics.below, fill: 'var(--danger)' },
-    { name: 'No Data', value: metrics.noData, fill: 'var(--text-muted)' },
-  ]
+function SectorPerformancePanel({ sectors, selectedSector, departments, onSector, onDepartment }: { sectors: EntityMetric[]; selectedSector: string; departments: EntityMetric[]; onSector(name: string): void; onDepartment(name: string): void }) {
   return (
-    <section className="card p-5">
-      <SectionTitle title="Performance distribution" subtitle="Selected scope target status by KPI record." />
-      <div className="mt-5 h-72">
-        <ResponsiveContainer>
-          <BarChart data={data} layout="vertical" margin={{ left: 8, right: 8, top: 4, bottom: 4 }}>
-            <XAxis type="number" hide />
-            <YAxis dataKey="name" type="category" width={72} tickLine={false} axisLine={false} tick={{ fill: 'var(--text)', fontSize: 12, fontWeight: 700 }} />
-            <Tooltip cursor={{ fill: 'color-mix(in srgb, var(--primary) 8%, transparent)' }} contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: '0 12px 30px rgba(15,23,42,0.08)' }} />
-            <Bar dataKey="value" radius={[10, 10, 10, 10]} barSize={18}>
-              {data.map((entry) => <Cell fill={entry.fill} key={entry.name} />)}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-      <DistributionBar metrics={metrics} />
-    </section>
-  )
-}
-
-function DgePerformancePanel({ sectors, selectedSector, departments, onSector, onDepartment }: { sectors: EntityMetric[]; selectedSector: string; departments: EntityMetric[]; onSector(name: string): void; onDepartment(name: string): void }) {
-  return (
-    <section className="card p-5">
-      <SectionTitle title="Sector Performance" subtitle="Select a sector to compare its departments." />
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <div className="space-y-2">
-          <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-muted">Sectors</p>
-          {sectors.map((item) => <CompactPerformanceButton item={item} key={item.name} selected={item.name === selectedSector} onClick={() => onSector(item.name)} />)}
+    <section className="space-y-4">
+      <SectionTitle title="Sector Performance" subtitle="Select a sector to compare departments without leaving the DGE overview." />
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_1.1fr]">
+        <div className="rounded-[18px] border border-border bg-surface p-3 shadow-soft">
+          <p className="px-1 pb-2 text-xs font-extrabold uppercase tracking-[0.08em] text-muted">Sectors</p>
+          <div className="space-y-2">
+            {sectors.map((item) => (
+              <PerformanceRow item={item} key={item.name} onClick={() => onSector(item.name)} selected={item.name === selectedSector} />
+            ))}
+          </div>
         </div>
-        <div className="space-y-2">
-          <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-muted">{selectedSector} Departments</p>
-          {departments.slice(0, 8).map((item) => <CompactPerformanceButton item={item} key={item.name} onClick={() => onDepartment(item.name)} />)}
+        <div className="rounded-[18px] border border-border bg-surface p-3 shadow-soft">
+          <p className="px-1 pb-2 text-xs font-extrabold uppercase tracking-[0.08em] text-muted">{selectedSector} Departments</p>
+          <div className="space-y-2">
+            {departments.map((item) => (
+              <PerformanceRow item={item} key={item.name} onClick={() => onDepartment(item.name)} />
+            ))}
+            {!departments.length ? (
+              <div className="rounded-2xl border border-border bg-surface-raised p-6 text-sm font-semibold text-muted">No departments available for the selected sector.</div>
+            ) : null}
+          </div>
         </div>
       </div>
     </section>
   )
 }
 
-function CompactPerformanceButton({ item, selected, onClick }: { item: EntityMetric; selected?: boolean; onClick(): void }) {
+function PerformanceRow({ item, selected, onClick }: { item: EntityMetric; selected?: boolean; onClick(): void }) {
+  const direction = trendDirection(item.trend)
   return (
-    <button className={cn('flex w-full items-center gap-3 rounded-2xl border border-border bg-surface-raised p-3 text-left transition hover:border-primary/35 hover:bg-primary-tint', selected && 'border-primary/40 bg-primary-tint')} onClick={onClick} type="button">
-      <DonutMetric metrics={item} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-extrabold text-text">{item.name}</p>
-        <div className="mt-1 flex flex-wrap gap-2 text-xs font-bold text-muted">
-          <span>{item.count.toLocaleString()} KPIs</span>
+    <button
+      className={cn(
+        'grid w-full grid-cols-[128px_minmax(0,1fr)_52px] items-center gap-5 rounded-xl border border-border bg-surface-raised px-4 py-3 text-left transition hover:border-primary hover:bg-primary-tint',
+        selected && 'border-primary bg-primary-tint ring-1 ring-primary/15',
+      )}
+      onClick={onClick}
+      type="button"
+    >
+      <div className="mr-2 flex justify-center">
+        <MiniSparkline values={item.trend} compact />
+      </div>
+      <div className="min-w-0 pl-1">
+        <p className="truncate text-base font-extrabold text-text">{item.name}</p>
+        <div className="mt-1 flex flex-wrap gap-2 text-xs font-extrabold">
+          <span className="text-muted">{item.count.toLocaleString()} KPIs</span>
           <span className="text-success">{item.met.toLocaleString()} met</span>
           <span className="text-danger">{item.below.toLocaleString()} below</span>
         </div>
       </div>
-      <ChevronRight className="h-4 w-4 text-primary" />
-    </button>
-  )
-}
-
-function TrendPanel({ rows, title }: { rows: KpiRecord[]; title: string }) {
-  const data = quarters.map((quarter) => {
-    const metric = aggregate(rows.filter((row) => row.quarter === quarter))
-    return { quarter, score: metric.avg === null ? null : Math.round(metric.avg * 100), met: metric.met, below: metric.below }
-  })
-  return (
-    <section className="card p-5">
-      <SectionTitle title={title} subtitle="Quarter-wise score movement based on selected scope." />
-      <div className="mt-4 h-72">
-        <ResponsiveContainer>
-          <LineChart data={data} margin={{ left: 0, right: 16, top: 12, bottom: 0 }}>
-            <XAxis dataKey="quarter" tickLine={false} axisLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12, fontWeight: 700 }} />
-            <YAxis tickLine={false} axisLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12, fontWeight: 700 }} />
-            <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: '0 12px 30px rgba(15,23,42,0.08)' }} formatter={(value) => [`${value}%`, 'Score']} />
-            <Line type="monotone" dataKey="score" stroke="var(--primary)" strokeWidth={3} dot={{ r: 4, fill: 'var(--surface)', stroke: 'var(--primary)', strokeWidth: 3 }} activeDot={{ r: 6 }} />
-          </LineChart>
-        </ResponsiveContainer>
+      <div className="flex flex-col items-end gap-1">
+        <DonutMetric metrics={item} />
+        <span className={cn('text-[10px] font-extrabold uppercase', direction === 'up' ? 'text-success' : direction === 'down' ? 'text-danger' : 'text-warning')}>
+          {direction === 'up' ? 'Up' : direction === 'down' ? 'Down' : 'Stable'}
+        </span>
       </div>
-    </section>
+    </button>
   )
 }
 
@@ -536,11 +526,11 @@ function RankingPanel({ items }: { items: EntityMetric[] }) {
       <SectionTitle title="Deeper Analysis" subtitle="Best and weakest departments in the selected sector." />
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <div className="space-y-3">
-          <p className="text-sm font-extrabold text-text">Top performance</p>
+          <p className="text-sm font-extrabold text-text">Top Performing Departments</p>
           {top.map((item) => <RankingRow item={item} key={item.name} />)}
         </div>
         <div className="space-y-3">
-          <p className="text-sm font-extrabold text-text">Needs attention</p>
+          <p className="text-sm font-extrabold text-text">Departments Needing Attention</p>
           {low.map((item) => <RankingRow item={item} key={item.name} />)}
         </div>
       </div>
@@ -563,9 +553,43 @@ function RankingRow({ item }: { item: EntityMetric }) {
   )
 }
 
+function AdditionalAnalysis({ allRows, rows }: { allRows: KpiRecord[]; rows: KpiRecord[] }) {
+  const movement = movementSummary(allRows)
+  const pmMissing = rows.filter((row) => !row.pmComments).length
+  const directorMissing = rows.filter((row) => !row.directorComments).length
+  const underTarget = rows
+    .filter((row) => row.score !== null && row.score < 1)
+    .sort((a, b) => Math.abs(1 - (a.score ?? 0)) - Math.abs(1 - (b.score ?? 0)))
+  const closest = underTarget[0]
+  const furthest = underTarget[underTarget.length - 1]
+  return (
+    <section className="space-y-4">
+      <SectionTitle title="Additional Analysis" subtitle="Other ways to interpret movement, target gap, and review completion." />
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <AnalysisCard label="Improved Q2 to Q3" note="KPI trends moving upward" value={movement.improved.toLocaleString()} />
+        <AnalysisCard label="Declined Q2 to Q3" note="KPI trends moving downward" value={movement.declined.toLocaleString()} />
+        <AnalysisCard label="PM Comments Missing" note="Current filter records" value={pmMissing.toLocaleString()} />
+        <AnalysisCard label="Director Comments Missing" note="Current filter records" value={directorMissing.toLocaleString()} />
+        <AnalysisCard label="Closest To Target" note={closest ? closest.title : 'No under-target KPI'} value={closest ? `${pct(closest.score)} - ${kpiCode(closest)}` : 'N/A'} />
+        <AnalysisCard label="Furthest From Target" note={furthest ? furthest.title : 'No under-target KPI'} value={furthest ? `${pct(furthest.score)} - ${kpiCode(furthest)}` : 'N/A'} />
+      </div>
+    </section>
+  )
+}
+
+function AnalysisCard({ label, value, note }: { label: string; value: string; note: string }) {
+  return (
+    <article className="rounded-[22px] border border-border bg-surface p-4 shadow-soft transition hover:border-primary/35 hover:shadow-card">
+      <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-muted">{label}</p>
+      <p className="mt-3 truncate text-xl font-extrabold text-text" title={value}>{value}</p>
+      <p className="mt-2 line-clamp-2 text-sm font-normal leading-5 text-muted" title={note}>{note}</p>
+    </article>
+  )
+}
+
 function KpiWorkspace({ attention, counts, kpis, totalCount, expandedKpi, onAttention, onExpand }: { attention: string; counts: Record<string, number>; kpis: KpiMetric[]; totalCount: number; expandedKpi: string; onAttention(value: string): void; onExpand(value: string): void }) {
   return (
-    <section className="card overflow-hidden">
+    <section className="card overflow-hidden" id="report-kpi-workspace">
       <div className="border-b border-border p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <SectionTitle title="KPI Filters" subtitle={`${kpis.length.toLocaleString()} of ${totalCount.toLocaleString()} KPI records visible.`} />
@@ -713,56 +737,69 @@ function KpiExpandedDetail({ kpi }: { kpi: KpiMetric }) {
   )
 }
 
-function AiQueryPanel({ answer, context, query, setQuery, onAsk }: { answer: string; context: string; query: string; setQuery(value: string): void; onAsk(question?: string): void }) {
+function FloatingAiAssistant({ answer, context, isOpen, query, setQuery, onAsk, onClose, onOpen }: { answer: string; context: string; isOpen: boolean; query: string; setQuery(value: string): void; onAsk(question?: string): void; onClose(): void; onOpen(): void }) {
   const suggestions = ['Which sectors improved from Q2 to Q3?', 'Show below target departments', 'What are the strongest performance areas?']
   return (
-    <section className="ai-panel">
-      <div className="flex items-start gap-3">
-        <div className="ai-icon h-11 w-11"><Bot className="h-5 w-5" /></div>
-        <div>
-          <p className="eyebrow">AI Query</p>
-          <h2 className="ai-heading text-xl">Ask Performance Data</h2>
-          <p className="mt-1 text-xs font-semibold text-muted">{context}</p>
-        </div>
-      </div>
-      <div className="mt-4 flex gap-2">
-        <input className="field h-11 min-w-0 flex-1" onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') onAsk() }} placeholder="Ask about sectors, departments, trends, or KPI risks" value={query} />
-        <button className="btn-primary h-11 px-4" onClick={() => onAsk()} type="button">Ask</button>
-      </div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {suggestions.map((item) => <button className="ai-chip transition hover:scale-[1.02]" key={item} onClick={() => onAsk(item)} type="button">{item}</button>)}
-      </div>
-      <div className="ai-surface mt-4">
-        <p className="whitespace-pre-wrap text-sm font-semibold leading-6 text-text">{answer}</p>
-      </div>
-    </section>
-  )
-}
-
-function AdditionalAnalysis({ rows, allRows }: { rows: KpiRecord[]; allRows: KpiRecord[] }) {
-  const movement = movementSummary(allRows)
-  const pmMissing = rows.filter((row) => !row.pmComments).length
-  const underTarget = rows.filter((row) => row.score !== null && row.score < 1).sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
-  return (
-    <section className="card p-5">
-      <SectionTitle title="Additional Analysis" subtitle="Governance risks and quarter movement." />
-      <div className="mt-4 grid gap-3">
-        <AnalysisCard label="Q2 to Q3 improving" value={movement.improved.toLocaleString()} note="KPI records with positive quarter movement." />
-        <AnalysisCard label="Q2 to Q3 declining" value={movement.declined.toLocaleString()} note="KPI records requiring follow-up." />
-        <AnalysisCard label="Missing PM comments" value={pmMissing.toLocaleString()} note="Records without performance team comment." />
-        <AnalysisCard label="Largest target gap" value={underTarget[0] ? kpiCode(underTarget[0]) : 'N/A'} note={underTarget[0] ? `${underTarget[0].title.slice(0, 72)}...` : 'No below-target records.'} />
-      </div>
-    </section>
-  )
-}
-
-function AnalysisCard({ label, value, note }: { label: string; value: string; note: string }) {
-  return (
-    <div className="rounded-2xl border border-border bg-surface-raised p-4">
-      <p className="text-sm font-extrabold text-text">{label}</p>
-      <p className="mt-2 text-2xl font-extrabold text-primary">{value}</p>
-      <p className="mt-1 text-xs font-semibold leading-5 text-muted">{note}</p>
-    </div>
+    <>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.section
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            className="fixed bottom-24 right-5 z-[90] w-[min(420px,calc(100vw-2rem))] overflow-hidden rounded-[28px] border border-[var(--ai-border)] bg-[linear-gradient(0deg,var(--ai-soft),var(--surface))] shadow-modal"
+            exit={{ opacity: 0, y: 18, scale: 0.97 }}
+            initial={{ opacity: 0, y: 18, scale: 0.97 }}
+            transition={{ duration: 0.22 }}
+          >
+            <div className="border-b border-[color-mix(in_srgb,var(--ai-border)_70%,transparent)] p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="ai-icon h-11 w-11 shadow-soft"><Bot className="h-5 w-5" /></div>
+                  <div>
+                    <h2 className="ai-heading text-base font-extrabold">GovDigital AI Teammate</h2>
+                    <p className="mt-1 text-xs font-semibold text-muted">Performance insights for {context}</p>
+                  </div>
+                </div>
+                <button className="flex h-9 w-9 items-center justify-center rounded-full bg-text text-surface transition hover:scale-105" onClick={onClose} type="button" aria-label="Close AI assistant">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <div className="max-h-[520px] space-y-4 overflow-y-auto p-4">
+              <div className="flex items-start gap-3">
+                <div className="ai-icon h-9 w-9"><Sparkles className="h-4 w-4" /></div>
+                <div className="rounded-2xl border border-[color-mix(in_srgb,var(--ai-border)_70%,transparent)] bg-surface px-4 py-3 shadow-soft">
+                  <p className="whitespace-pre-wrap text-sm font-semibold leading-6 text-text">{answer}</p>
+                </div>
+              </div>
+              <div className="space-y-2 pl-12">
+                {suggestions.map((item) => (
+                  <button className="block rounded-full border border-[var(--ai-border)] bg-surface px-3 py-2 text-left text-xs font-extrabold text-[var(--ai-strong)] transition hover:bg-[var(--ai-soft)]" key={item} onClick={() => onAsk(item)} type="button">
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="border-t border-[color-mix(in_srgb,var(--ai-border)_70%,transparent)] bg-surface/85 p-3 backdrop-blur">
+              <div className="flex items-center gap-2 rounded-2xl border border-[var(--ai-border)] bg-surface px-3 py-2 shadow-soft">
+                <MessageCircle className="h-4 w-4 text-[var(--ai-strong)]" />
+                <input className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-text outline-none placeholder:text-muted" onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') onAsk() }} placeholder="Type message..." value={query} />
+                <button className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--ai)] text-white shadow-soft transition hover:scale-105" onClick={() => onAsk()} type="button" aria-label="Ask AI">
+                  <Send className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </motion.section>
+        )}
+      </AnimatePresence>
+      <button
+        className="fixed bottom-5 right-5 z-[90] flex h-14 w-14 items-center justify-center rounded-full bg-[var(--ai)] text-white shadow-modal transition hover:scale-105"
+        onClick={isOpen ? onClose : onOpen}
+        type="button"
+        aria-label={isOpen ? 'Close AI assistant' : 'Open AI assistant'}
+      >
+        {isOpen ? <X className="h-5 w-5" /> : <Sparkles className="h-6 w-6" />}
+      </button>
+    </>
   )
 }
 
@@ -809,7 +846,7 @@ function MiniMetric({ label, value, tone }: { label: string; value: number; tone
 function DistributionBar({ metrics }: { metrics: Pick<AggregateMetric, 'count' | 'met' | 'risk' | 'below' | 'noData'> }) {
   const total = Math.max(1, metrics.count)
   return (
-    <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-surface-raised">
+    <div className="mt-2 flex h-3 overflow-hidden rounded-full bg-surface-raised">
       <span className="bg-success" style={{ width: `${(metrics.met / total) * 100}%` }} />
       <span className="bg-warning" style={{ width: `${(metrics.risk / total) * 100}%` }} />
       <span className="bg-danger" style={{ width: `${(metrics.below / total) * 100}%` }} />
@@ -820,31 +857,59 @@ function DistributionBar({ metrics }: { metrics: Pick<AggregateMetric, 'count' |
 
 function TrendBars({ values }: { values: Array<number | null> }) {
   return (
-    <div className="mt-4 flex h-12 items-end gap-1">
+    <div className="mt-3 flex h-12 items-end gap-1">
       {quarters.map((quarter, index) => {
         const value = values[index]
-        const height = value === null ? 14 : Math.max(16, Math.min(48, value * 42))
-        return <span className={cn('flex-1 rounded-t-lg', bandFillClass(performanceBand(value)))} key={quarter} style={{ height }} title={`${quarter}: ${pct(value)}`} />
+        const height = value === null ? 12 : Math.max(12, Math.min(42, value * 36))
+        return (
+          <span
+            className={cn('flex-1 rounded-t-md transition duration-200 group-hover:-translate-y-0.5', bandFillClass(performanceBand(value)))}
+            key={quarter}
+            style={{ height }}
+            title={`${quarter}: ${pct(value)}`}
+          />
+        )
       })}
     </div>
   )
 }
 
 function MiniSparkline({ values, compact }: { values: Array<number | null>; compact?: boolean }) {
+  const gradientId = useId().replace(/:/g, '')
   const numeric = values.map((value, index) => ({ value, index })).filter((point): point is { value: number; index: number } => valueIsNumber(point.value))
-  if (!numeric.length) return <div className={cn('rounded-full bg-primary-tint', compact ? 'h-2 w-24' : 'mt-4 h-2 w-full')} />
-  const width = compact ? 104 : 180
-  const height = compact ? 34 : 44
+  if (numeric.length < 2) return <div className={cn('rounded-full bg-muted/30', compact ? 'h-0.5 w-24' : 'mt-4 h-0.5 w-full')} />
+  const width = compact ? 118 : 180
+  const height = compact ? 38 : 44
   const min = Math.min(...numeric.map((point) => point.value))
   const max = Math.max(...numeric.map((point) => point.value))
   const span = max - min || 1
-  const points = numeric.map((point) => {
+  const plotted = numeric.map((point) => {
     const x = 4 + (point.index / Math.max(1, quarters.length - 1)) * (width - 8)
     const y = height - 4 - ((point.value - min) / span) * (height - 8)
-    return `${x},${y}`
-  }).join(' ')
+    return { x: Number(x.toFixed(1)), y: Number(y.toFixed(1)) }
+  })
+  const points = plotted.map((point) => `${point.x},${point.y}`).join(' ')
+  const areaPoints = [`${plotted[0].x},${height - 4}`, points, `${plotted[plotted.length - 1].x},${height - 4}`].join(' ')
+  const direction = trendDirection(values)
   return (
-    <svg className={cn('text-primary', compact ? 'h-9 w-28' : 'mt-4 h-12 w-full')} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+    <svg
+      className={cn(
+        compact ? 'h-10 w-32' : 'mt-4 h-12 w-full',
+        direction === 'up' ? 'text-success' : direction === 'down' ? 'text-danger' : 'text-muted',
+      )}
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="none"
+      role="img"
+      aria-label={`Trend ${direction}`}
+    >
+      <defs>
+        <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="currentColor" stopOpacity="0.24" />
+          <stop offset="72%" stopColor="currentColor" stopOpacity="0.08" />
+          <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon fill={`url(#${gradientId})`} points={areaPoints} />
       <polyline fill="none" points={points} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={compact ? 3 : 2.8} />
     </svg>
   )
@@ -856,10 +921,11 @@ function DonutMetric({ metrics }: { metrics: Pick<AggregateMetric, 'count' | 'me
   const belowEnd = Math.max(metDegrees, Math.min(360, metDegrees + (metrics.below / total) * 360))
   return (
     <span
-      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xs font-extrabold text-text"
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
       style={{ background: `conic-gradient(var(--success) 0deg ${metDegrees}deg, var(--danger) ${metDegrees}deg ${belowEnd}deg, var(--border) ${belowEnd}deg 360deg)` }}
+      title={`Met ${metrics.met}, below ${metrics.below}, total ${metrics.count}`}
     >
-      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface">{pct(metrics.count ? metrics.met / metrics.count : null)}</span>
+      <span className="h-6 w-6 rounded-full bg-surface" />
     </span>
   )
 }
@@ -911,13 +977,13 @@ function aggregate(rows: KpiRecord[]): AggregateMetric {
   )
 }
 
-function byField(rows: KpiRecord[], field: 'sector' | 'department'): EntityMetric[] {
+function byField(rows: KpiRecord[], field: 'sector' | 'department', trendRows = rows): EntityMetric[] {
   const groups = new Map<string, KpiRecord[]>()
   rows.forEach((row) => {
     const key = row[field] || 'Unassigned'
     groups.set(key, [...(groups.get(key) ?? []), row])
   })
-  return [...groups.entries()].map(([name, groupRows]) => ({ name, rows: groupRows, trend: entityTrend(rows, field, name), ...aggregate(groupRows) })).sort(sortByAvgDesc)
+  return [...groups.entries()].map(([name, groupRows]) => ({ name, rows: groupRows, trend: entityTrend(trendRows, field, name), ...aggregate(groupRows) })).sort(sortByAvgDesc)
 }
 
 function byKpi(rows: KpiRecord[]): KpiMetric[] {
@@ -948,6 +1014,21 @@ function metricTrendSet(rows: KpiRecord[]) {
       const metric = aggregate(rows.filter((row) => row.quarter === quarter))
       return metric.count ? metric.met / metric.count : null
     }),
+  }
+}
+
+function kpiSnapshot(kpis: KpiMetric[]) {
+  const selectedRows = kpis.map((kpi) => kpi.selected)
+  const metrics = aggregate(selectedRows)
+  return {
+    total: kpis.length,
+    avg: metrics.avg,
+    met: metrics.met,
+    below: metrics.below,
+    increasing: kpis.filter((kpi) => trendDirection(kpi.trend) === 'up').length,
+    decreasing: kpis.filter((kpi) => trendDirection(kpi.trend) === 'down').length,
+    closeToTarget: selectedRows.filter((row) => row.score !== null && row.score >= 0.9 && row.score < 1).length,
+    farFromTarget: selectedRows.filter((row) => row.score !== null && row.score < 0.7).length,
   }
 }
 
@@ -1078,13 +1159,16 @@ function improvementList(rows: KpiRecord[], field: 'sector' | 'department' | 'ti
 function movementSummary(rows: KpiRecord[]) {
   return byKpi(rows).reduce(
     (total, kpi) => {
-      const q2 = kpi.trend[1]
-      const q3 = kpi.trend[2]
-      if (q2 !== null && q3 !== null && q3 > q2) total.improved += 1
-      if (q2 !== null && q3 !== null && q3 < q2) total.declined += 1
+      const q2 = kpi.rows.find((row) => row.quarter === 'Q2')?.score ?? null
+      const q3 = kpi.rows.find((row) => row.quarter === 'Q3')?.score ?? null
+      if (q2 === null || q3 === null) return total
+      const diff = q3 - q2
+      if (diff >= 0.005) total.improved += 1
+      else if (diff <= -0.005) total.declined += 1
+      else total.stable += 1
       return total
     },
-    { improved: 0, declined: 0 },
+    { improved: 0, declined: 0, stable: 0 },
   )
 }
 
@@ -1129,10 +1213,10 @@ function bandPillClass(band: Band) {
 }
 
 function bandFillClass(band: Band) {
-  if (band === 'met') return 'bg-success/35'
-  if (band === 'risk') return 'bg-warning/45'
-  if (band === 'below') return 'bg-danger/45'
-  return 'bg-border'
+  if (band === 'met') return 'bg-[#bce8ca] dark:bg-success/55'
+  if (band === 'risk') return 'bg-[#f7d794] dark:bg-warning/60'
+  if (band === 'below') return 'bg-[#f4b6b0] dark:bg-danger/60'
+  return 'bg-[#cfd8e3] dark:bg-muted/45'
 }
 
 function bandLabel(band: Band) {

@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { motion } from 'framer-motion'
-import { ArrowLeft, BrainCircuit, CheckCircle2, ClipboardList, FileText, FileUp, History, Save, ShieldAlert, Sparkles, Target, WandSparkles, XCircle } from 'lucide-react'
+import { ArrowLeft, BrainCircuit, CheckCircle2, ClipboardList, FileText, FileUp, History, Save, ShieldAlert, Sparkles, WandSparkles, XCircle } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { Controller, useForm } from 'react-hook-form'
@@ -354,14 +354,14 @@ export function KpiFillPage() {
           </div>
           <div className="mt-4 space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
-              <label className="block rounded-[22px] border border-border bg-surface-raised p-4">
-                <span className="mb-2 block text-sm font-extrabold">Actual score</span>
+              <label className="block">
+                <span className="mb-1 block text-sm font-bold text-text">Actual score</span>
                 <Controller
                   control={control}
                   name="actualScore"
                   render={({ field }) => (
                     <input
-                      className="field w-full"
+                      className="form-field-surface w-full px-4 py-3 text-sm font-normal leading-6 text-text outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:text-text disabled:opacity-100"
                       disabled={!canEdit}
                       max={100}
                       min={0}
@@ -378,18 +378,16 @@ export function KpiFillPage() {
                 </div>
                 {errors.actualScore ? <span className="text-xs text-danger">{errors.actualScore.message}</span> : null}
               </label>
-              <div className="rounded-[22px] border border-border bg-surface-raised p-4">
-                <span className="mb-2 block text-sm font-extrabold">Target score</span>
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-display text-4xl font-extrabold">{activeSubmission.targetScore}</p>
-                    <p className="mt-1 text-xs font-semibold text-muted">KPI target for this cycle</p>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-tint text-primary">
-                    <Target className="h-5 w-5" />
-                  </div>
-                </div>
-              </div>
+              <label className="block">
+                <span className="mb-1 block text-sm font-bold text-text">Target score</span>
+                <input
+                  className="form-field-surface w-full px-4 py-3 text-sm font-normal leading-6 text-text outline-none disabled:cursor-not-allowed disabled:text-text disabled:opacity-100"
+                  disabled
+                  readOnly
+                  type="number"
+                  value={activeSubmission.targetScore}
+                />
+              </label>
             </div>
             {activeKpi.questions.map((question) => (
               <label className="block" key={question.id}>

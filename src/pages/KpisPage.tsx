@@ -164,6 +164,13 @@ export function KpisPage() {
     ],
     [kpis, visibleDepartments],
   )
+  const departmentOptions = useMemo(
+    () => [
+      { value: 'all', label: 'All Departments' },
+      ...visibleDepartments.map((department) => ({ value: department.id, label: department.name })),
+    ],
+    [visibleDepartments],
+  )
   const sectorTabs = useMemo(
     () => [
       { id: 'all', label: 'All Sectors', count: kpis.length },
@@ -343,20 +350,6 @@ export function KpisPage() {
             </div>
           </div>
         </div>
-        {user.role === 'focal_point' ? (
-          <div className="mt-4 space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              {departmentTabs.map((tab) => (
-                <button className={tabClass(departmentFilter === tab.id)} key={tab.id} onClick={() => setDepartmentFilter(tab.id)} type="button">
-                  {tab.label}
-                  <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', departmentFilter === tab.id ? 'bg-white/20' : 'bg-surface text-muted')}>
-                    {tab.count}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
         {user.role === 'performance_team' ? (
           <div className="mt-4 space-y-3">
             <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px_220px_220px_220px]">
@@ -402,7 +395,7 @@ export function KpisPage() {
           </div>
         ) : null}
         {user.role !== 'performance_team' ? (
-        <div className={cn('mt-4 grid gap-3', user.role === 'focal_point' ? 'lg:grid-cols-[minmax(0,1fr)_240px_320px]' : user.role === 'department_director' ? 'lg:grid-cols-[minmax(0,1fr)_220px_240px]' : user.role === 'director_general' ? 'lg:grid-cols-[minmax(0,1fr)_220px_220px_220px]' : user.role === 'executive_director' ? 'lg:grid-cols-[minmax(0,1fr)_240px]' : 'lg:grid-cols-[1fr_240px_260px]')}>
+        <div className={cn('mt-4 grid gap-3', user.role === 'focal_point' ? 'lg:grid-cols-[minmax(0,1fr)_240px_240px_320px]' : user.role === 'department_director' ? 'lg:grid-cols-[minmax(0,1fr)_220px_240px]' : user.role === 'director_general' ? 'lg:grid-cols-[minmax(0,1fr)_220px_220px_220px]' : user.role === 'executive_director' ? 'lg:grid-cols-[minmax(0,1fr)_240px]' : 'lg:grid-cols-[1fr_240px_260px]')}>
           <div className="form-field-surface flex h-10 items-center gap-2 px-3 text-muted">
             <Search className="h-4 w-4" />
             <input className="h-full flex-1 bg-transparent text-sm font-medium text-text outline-none" placeholder="Search KPI, category, or department..." value={query} onChange={(event) => setQuery(event.target.value)} />
@@ -425,6 +418,14 @@ export function KpisPage() {
                 placeholder="Department"
               />
             </>
+          ) : null}
+          {user.role === 'focal_point' ? (
+            <AppSelect
+              value={departmentFilter}
+              onValueChange={setDepartmentFilter}
+              options={departmentOptions}
+              placeholder="Department"
+            />
           ) : null}
           <AppSelect
             value={dimensionFilter}
