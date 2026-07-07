@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import {
   BarChart as BarChartIcon,
   Bot,
+  BrainCircuit,
   ChevronRight,
   Database,
   MessageCircle,
@@ -744,46 +745,53 @@ function FloatingAiAssistant({ answer, context, isOpen, query, setQuery, onAsk, 
       <AnimatePresence>
         {isOpen && (
           <motion.section
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            className="fixed bottom-24 right-5 z-[90] w-[min(420px,calc(100vw-2rem))] overflow-hidden rounded-[28px] border border-[var(--ai-border)] bg-[linear-gradient(0deg,var(--ai-soft),var(--surface))] shadow-modal"
-            exit={{ opacity: 0, y: 18, scale: 0.97 }}
-            initial={{ opacity: 0, y: 18, scale: 0.97 }}
-            transition={{ duration: 0.22 }}
+            animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+            className="ai-chat-shell fixed bottom-24 right-5 z-[90] w-[min(460px,calc(100vw-2rem))]"
+            exit={{ opacity: 0, y: 24, scale: 0.94, filter: 'blur(6px)' }}
+            initial={{ opacity: 0, y: 28, scale: 0.92, filter: 'blur(8px)' }}
+            transition={{ type: 'spring', stiffness: 330, damping: 28 }}
+            style={{ transformOrigin: 'bottom right' }}
           >
-            <div className="border-b border-[color-mix(in_srgb,var(--ai-border)_70%,transparent)] p-4">
+            <div className="relative border-b border-[color-mix(in_srgb,var(--ai-border)_62%,transparent)] p-5">
+              <div className="pointer-events-none absolute right-8 top-4 h-24 w-24 rounded-full bg-[var(--ai)] opacity-10 blur-2xl" />
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3">
-                  <div className="ai-icon h-11 w-11 shadow-soft"><Bot className="h-5 w-5" /></div>
+                  <div className="ai-icon h-12 w-12 shadow-soft ring-1 ring-[var(--ai-border)]"><Bot className="h-5 w-5" /></div>
                   <div>
-                    <h2 className="ai-heading text-base font-extrabold">GovDigital AI Teammate</h2>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="ai-heading text-lg font-extrabold">GovDigital AI Teammate</h2>
+                      <span className="rounded-full border border-[var(--ai-border)] bg-surface/70 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.1em] text-[var(--ai-strong)]">Live</span>
+                    </div>
                     <p className="mt-1 text-xs font-semibold text-muted">Performance insights for {context}</p>
                   </div>
                 </div>
-                <button className="flex h-9 w-9 items-center justify-center rounded-full bg-text text-surface transition hover:scale-105" onClick={onClose} type="button" aria-label="Close AI assistant">
+                <button className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface/80 text-text shadow-soft transition hover:scale-105 hover:border-[var(--ai-border)] hover:text-[var(--ai-strong)]" onClick={onClose} type="button" aria-label="Close AI assistant">
                   <X className="h-4 w-4" />
                 </button>
               </div>
             </div>
-            <div className="max-h-[520px] space-y-4 overflow-y-auto p-4">
+            <div className="max-h-[520px] space-y-4 overflow-y-auto p-5">
               <div className="flex items-start gap-3">
-                <div className="ai-icon h-9 w-9"><Sparkles className="h-4 w-4" /></div>
-                <div className="rounded-2xl border border-[color-mix(in_srgb,var(--ai-border)_70%,transparent)] bg-surface px-4 py-3 shadow-soft">
+                <div className="ai-icon mt-0.5 h-9 w-9"><Sparkles className="h-4 w-4" /></div>
+                <div className="ai-chat-message min-w-0 flex-1">
+                  <p className="mb-1 text-[11px] font-extrabold uppercase tracking-[0.12em] text-[var(--ai-strong)]">Executive insight</p>
                   <p className="whitespace-pre-wrap text-sm font-semibold leading-6 text-text">{answer}</p>
                 </div>
               </div>
-              <div className="space-y-2 pl-12">
+              <div className="grid gap-2 pl-12">
                 {suggestions.map((item) => (
-                  <button className="block rounded-full border border-[var(--ai-border)] bg-surface px-3 py-2 text-left text-xs font-extrabold text-[var(--ai-strong)] transition hover:bg-[var(--ai-soft)]" key={item} onClick={() => onAsk(item)} type="button">
-                    {item}
+                  <button className="group flex items-center justify-between gap-3 rounded-2xl border border-[var(--ai-border)] bg-surface/80 px-3 py-2.5 text-left text-xs font-extrabold text-[var(--ai-strong)] shadow-soft transition hover:-translate-y-0.5 hover:bg-[var(--ai-soft)]" key={item} onClick={() => onAsk(item)} type="button">
+                    <span>{item}</span>
+                    <ChevronRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
                   </button>
                 ))}
               </div>
             </div>
-            <div className="border-t border-[color-mix(in_srgb,var(--ai-border)_70%,transparent)] bg-surface/85 p-3 backdrop-blur">
-              <div className="flex items-center gap-2 rounded-2xl border border-[var(--ai-border)] bg-surface px-3 py-2 shadow-soft">
+            <div className="border-t border-[color-mix(in_srgb,var(--ai-border)_62%,transparent)] bg-surface/70 p-4 backdrop-blur-xl">
+              <div className="flex items-center gap-2 rounded-[22px] border border-[var(--ai-border)] bg-surface px-3 py-2 shadow-soft transition focus-within:ring-4 focus-within:ring-[color-mix(in_srgb,var(--ai)_14%,transparent)]">
                 <MessageCircle className="h-4 w-4 text-[var(--ai-strong)]" />
                 <input className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-text outline-none placeholder:text-muted" onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') onAsk() }} placeholder="Type message..." value={query} />
-                <button className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--ai)] text-white shadow-soft transition hover:scale-105" onClick={() => onAsk()} type="button" aria-label="Ask AI">
+                <button className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--ai)] text-white shadow-soft transition hover:scale-105" onClick={() => onAsk()} type="button" aria-label="Ask AI">
                   <Send className="h-4 w-4" />
                 </button>
               </div>
@@ -792,12 +800,14 @@ function FloatingAiAssistant({ answer, context, isOpen, query, setQuery, onAsk, 
         )}
       </AnimatePresence>
       <button
-        className="fixed bottom-5 right-5 z-[90] flex h-14 w-14 items-center justify-center rounded-full bg-[var(--ai)] text-white shadow-modal transition hover:scale-105"
+        className="ai-fab fixed bottom-5 right-5 z-[90]"
         onClick={isOpen ? onClose : onOpen}
         type="button"
         aria-label={isOpen ? 'Close AI assistant' : 'Open AI assistant'}
       >
-        {isOpen ? <X className="h-5 w-5" /> : <Sparkles className="h-6 w-6" />}
+        <span className="ai-fab-icon">
+          {isOpen ? <X className="h-5 w-5" /> : <BrainCircuit className="h-6 w-6" />}
+        </span>
       </button>
     </>
   )

@@ -207,6 +207,84 @@ h2 {
     border-color: color-mix(in srgb, var(--ai-border) 72%, var(--border));
   }
 
+  .ai-chat-shell {
+    background:
+      radial-gradient(circle at 14% 0%, color-mix(in srgb, #60a5fa 20%, transparent), transparent 34%),
+      radial-gradient(circle at 90% 12%, color-mix(in srgb, #c084fc 26%, transparent), transparent 30%),
+      linear-gradient(180deg, color-mix(in srgb, var(--ai-soft) 72%, var(--surface)), var(--surface) 48%, color-mix(in srgb, var(--ai-soft) 52%, var(--surface)));
+    border-color: color-mix(in srgb, var(--ai-border) 78%, var(--border));
+    @apply overflow-hidden rounded-[30px] border shadow-modal backdrop-blur-xl;
+  }
+
+  .ai-chat-message {
+    background: color-mix(in srgb, var(--surface) 88%, var(--ai-soft));
+    border-color: color-mix(in srgb, var(--ai-border) 58%, var(--border));
+    @apply rounded-[22px] border px-4 py-3 shadow-soft;
+  }
+
+  .ai-fab {
+    background: var(--ai);
+    box-shadow:
+      0 12px 26px color-mix(in srgb, var(--ai) 22%, transparent),
+      0 0 0 5px color-mix(in srgb, var(--ai) 8%, transparent);
+    @apply relative flex h-16 w-16 items-center justify-center rounded-full text-white transition duration-300 hover:scale-105 active:scale-95;
+    animation: ai-heart-pulse 2.8s ease-in-out infinite;
+  }
+
+  .ai-fab::before {
+    background:
+      radial-gradient(circle, color-mix(in srgb, var(--ai) 30%, transparent) 0%, transparent 58%),
+      radial-gradient(circle at 70% 28%, color-mix(in srgb, #ffffff 12%, transparent) 0%, transparent 42%);
+    content: "";
+    filter: blur(9px);
+    inset: -6px;
+    opacity: 0.48;
+    position: absolute;
+    border-radius: inherit;
+    z-index: -1;
+    animation: ai-glow-pulse 2.8s ease-in-out infinite;
+  }
+
+  .ai-fab::after {
+    background: linear-gradient(145deg, color-mix(in srgb, #ffffff 18%, transparent), transparent 45%);
+    content: "";
+    inset: 1px;
+    opacity: 0.55;
+    position: absolute;
+    border-radius: inherit;
+  }
+
+  .ai-fab-icon {
+    background: color-mix(in srgb, var(--ai-strong) 48%, var(--ai));
+    @apply relative z-[1] flex h-12 w-12 items-center justify-center rounded-full text-white;
+  }
+
+  @keyframes ai-heart-pulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    46% {
+      transform: scale(1.035);
+    }
+    58% {
+      transform: scale(1.015);
+    }
+    70% {
+      transform: scale(1.045);
+    }
+  }
+
+  @keyframes ai-glow-pulse {
+    0%, 100% {
+      opacity: 0.34;
+      transform: scale(0.96);
+    }
+    52% {
+      opacity: 0.58;
+      transform: scale(1.04);
+    }
+  }
+
   form label > span:first-child {
     color: var(--text);
   }
