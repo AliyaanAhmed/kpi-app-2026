@@ -100,7 +100,7 @@ export function TrackersPage() {
   const { activeCycleId } = useAppStore()
   const [view, setView] = useState<TrackerView>('focal_point')
   const [sectorFilter, setSectorFilter] = useState('all')
-  const [aiOpen, setAiOpen] = useState(true)
+  const [aiOpen, setAiOpen] = useState(false)
   const user = mockApi.getCurrentUser()
   const departments = mockApi.getDepartments()
   const sectors = mockApi.getSectors()

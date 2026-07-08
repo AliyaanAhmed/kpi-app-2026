@@ -65,6 +65,14 @@ function assignmentForKpi(kpiId: string, activeCycleId: string) {
   return { role: 'Workflow Owner', name: focalPoint?.name ?? 'Unassigned' }
 }
 
+function NameChip({ name }: { name: string }) {
+  return (
+    <span tabIndex={0} className="inline-flex max-w-full cursor-default items-center rounded-lg bg-[#EEF5FF] px-2.5 py-1.5 text-[14px] font-normal text-primary outline-none transition-colors hover:bg-[#DCEEFF] hover:text-[#043DFF] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:bg-[#286CFF]/15 dark:text-[#BFDBFE] dark:hover:bg-[#286CFF]/25">
+      <span className="truncate">{name}</span>
+    </span>
+  )
+}
+
 export function KpisPage() {
   const { activeCycleId } = useAppStore()
   const [sectorFilter, setSectorFilter] = useState('all')
@@ -697,11 +705,8 @@ export function KpisPage() {
                 </span>
               )
               const assignedCell = (
-                <div className="flex min-w-[190px] items-center gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-tint text-primary">
-                    <CircleUserRound className="h-4 w-4" />
-                  </div>
-                  <p className="min-w-0 truncate text-sm font-semibold">{assignment.name}</p>
+                <div className="min-w-[190px] max-w-[260px]">
+                  <NameChip name={assignment.name} />
                 </div>
               )
               const focalPointCell = (
@@ -776,11 +781,8 @@ export function KpisPage() {
                       <td>{sector?.name ?? '-'}</td>
                       <td>{department?.name ?? '-'}</td>
                       <td>
-                        <div className="flex min-w-[210px] items-center gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-tint text-primary">
-                            <CircleUserRound className="h-4 w-4" />
-                          </div>
-                          <p className="min-w-0 truncate text-sm font-semibold">{assignment.name}</p>
+                        <div className="min-w-[210px] max-w-[280px]">
+                          <NameChip name={assignment.name} />
                         </div>
                       </td>
                       <td>{kpi.category}</td>

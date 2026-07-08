@@ -169,14 +169,6 @@ export function GovDigitalPerformanceReport() {
   const attentionCounts = useMemo(() => getAttentionCounts(kpis), [kpis])
   const visibleKpis = useMemo(() => filterKpisByAttention(kpis, attention), [attention, kpis])
 
-  useEffect(() => {
-    if (screen !== 'department' || !department) return
-    const timer = window.setTimeout(() => {
-      document.getElementById('report-kpi-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 180)
-    return () => window.clearTimeout(timer)
-  }, [department, screen])
-
   if (isLoading) {
     return <ReportSkeleton />
   }
@@ -191,12 +183,16 @@ export function GovDigitalPerformanceReport() {
     )
   }
 
+  const scrollReportTop = () => {
+    window.setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 80)
+  }
   const goDge = () => {
     setScreen('dge')
     setSector('')
     setDepartment('')
     setAttention('')
     setExpandedKpi('')
+    scrollReportTop()
   }
   const goSector = (nextSector: string) => {
     setScreen('sector')
@@ -204,6 +200,7 @@ export function GovDigitalPerformanceReport() {
     setDepartment('')
     setAttention('')
     setExpandedKpi('')
+    scrollReportTop()
   }
   const goDepartment = (nextSector: string, nextDepartment: string) => {
     setScreen('department')
@@ -211,6 +208,7 @@ export function GovDigitalPerformanceReport() {
     setDepartment(nextDepartment)
     setAttention('')
     setExpandedKpi('')
+    scrollReportTop()
   }
   const ask = (question = query) => {
     const next = question.trim()
@@ -282,8 +280,8 @@ export function GovDigitalPerformanceReport() {
                     </div>
                   </div>
                 </section>
-                <RankingPanel items={departmentItems} />
                 <KpiWorkspace attention={attention} counts={attentionCounts} kpis={visibleKpis} onAttention={setAttention} onExpand={setExpandedKpi} expandedKpi={expandedKpi} totalCount={kpis.length} />
+                <RankingPanel items={departmentItems} />
               </motion.div>
             )}
 
@@ -417,15 +415,34 @@ function MetricCard({ label, value, note, tone, trend }: { label: string; value:
 }
 
 function AiSummaryPanel({ text }: { text: string }) {
+  const [open, setOpen] = useState(false)
   return (
-    <section className="ai-panel">
-      <div className="flex items-start gap-3">
-        <div className="ai-icon h-11 w-11"><Sparkles className="h-5 w-5" /></div>
-        <div>
-          <h3 className="ai-heading text-lg font-extrabold">AI Summary</h3>
-          <p className="mt-1 text-sm font-normal leading-6 text-text">{text}</p>
+    <section className="overflow-hidden rounded-[28px] border border-[var(--ai-border)] bg-surface shadow-soft">
+      <button className="flex w-full items-start justify-between gap-4 bg-[linear-gradient(0deg,var(--ai-soft),var(--surface))] px-5 py-4 text-left transition hover:bg-[var(--ai-soft)]" onClick={() => setOpen((current) => !current)} type="button">
+        <div className="flex min-w-0 items-start gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--ai)] text-white shadow-[0_12px_24px_rgba(168,85,247,0.20)]">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-base font-extrabold text-text">AI Summary</h3>
+            <p className="mt-1 text-sm leading-6 text-muted">AI-supported executive interpretation for the current report scope, risk signals, and performance movement.</p>
+          </div>
         </div>
-      </div>
+        <ChevronRight className={cn('mt-1 h-4 w-4 shrink-0 text-[var(--ai-strong)] transition-transform', open && 'rotate-90')} />
+      </button>
+      {open ? (
+        <motion.div className="border-t border-[var(--ai-border)] px-5 pb-5 pt-4" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }}>
+          <article className="rounded-2xl border border-[var(--ai-border)] bg-white/75 p-4 shadow-soft dark:bg-white/5">
+            <div className="flex items-start gap-3">
+              <div className="ai-icon h-10 w-10"><BrainCircuit className="h-5 w-5" /></div>
+              <div>
+                <p className="text-sm font-extrabold text-text">Performance Interpretation</p>
+                <p className="mt-2 text-sm font-normal leading-6 text-text">{text}</p>
+              </div>
+            </div>
+          </article>
+        </motion.div>
+      ) : null}
     </section>
   )
 }
@@ -625,6 +642,17 @@ function KpiWorkspace({
   onClearDepartment?(): void
   onExpand(value: string): void
 }) {
+  const pageSize = 10
+  const [page, setPage] = useState(1)
+  const pageCount = Math.max(1, Math.ceil(kpis.length / pageSize))
+  const safePage = Math.min(page, pageCount)
+  const startIndex = (safePage - 1) * pageSize
+  const pagedKpis = kpis.slice(startIndex, startIndex + pageSize)
+
+  useEffect(() => {
+    setPage(1)
+  }, [attention, kpis.length, selectedDepartment])
+
   return (
     <section className="card overflow-hidden" id="report-kpi-workspace">
       <div className="border-b border-border p-5">
@@ -662,7 +690,35 @@ function KpiWorkspace({
           ))}
         </div>
       </div>
-      <KpiGrid kpis={kpis} expandedKpi={expandedKpi} onExpand={onExpand} />
+      <KpiGrid kpis={pagedKpis} expandedKpi={expandedKpi} onExpand={onExpand} />
+      {kpis.length ? (
+        <div className="flex flex-col gap-3 border-t border-border bg-surface px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-semibold text-muted">
+            Showing <span className="font-extrabold text-text">{startIndex + 1}</span>-<span className="font-extrabold text-text">{Math.min(startIndex + pageSize, kpis.length)}</span> of <span className="font-extrabold text-text">{kpis.length.toLocaleString()}</span> KPI records
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              className="btn-secondary h-9 rounded-xl px-3 text-xs"
+              disabled={safePage === 1}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+              type="button"
+            >
+              Previous
+            </button>
+            <span className="rounded-xl border border-border bg-surface-raised px-3 py-2 font-mono text-xs font-extrabold text-text">
+              {safePage} / {pageCount}
+            </span>
+            <button
+              className="btn-secondary h-9 rounded-xl px-3 text-xs"
+              disabled={safePage === pageCount}
+              onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
+              type="button"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }
@@ -854,7 +910,7 @@ function FloatingAiAssistant({ answer, context, isOpen, query, setQuery, onAsk, 
         type="button"
         aria-label={isOpen ? 'Close AI assistant' : 'Open AI assistant'}
       >
-        <span className="ai-fab-icon">
+        <span className={cn('ai-fab-icon', isOpen && 'ai-fab-close')}>
           {isOpen ? <X className="h-5 w-5" /> : <BrainCircuit className="h-6 w-6" />}
         </span>
       </button>

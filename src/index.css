@@ -223,65 +223,68 @@ h2 {
   }
 
   .ai-fab {
-    background: var(--ai);
+    background: #ffffff;
     box-shadow:
-      0 12px 26px color-mix(in srgb, var(--ai) 22%, transparent),
-      0 0 0 5px color-mix(in srgb, var(--ai) 8%, transparent);
-    @apply relative flex h-16 w-16 items-center justify-center rounded-full text-white transition duration-300 hover:scale-105 active:scale-95;
-    animation: ai-heart-pulse 2.8s ease-in-out infinite;
+      0 16px 34px rgba(15, 23, 42, 0.10),
+      0 0 30px color-mix(in srgb, var(--ai) 20%, transparent),
+      0 0 46px color-mix(in srgb, #60a5fa 14%, transparent);
+    @apply relative flex h-[72px] w-[72px] items-center justify-center rounded-full transition duration-300 hover:scale-105 active:scale-95;
+    animation: ai-button-pulse 3s ease-in-out infinite;
   }
 
   .ai-fab::before {
     background:
-      radial-gradient(circle, color-mix(in srgb, var(--ai) 30%, transparent) 0%, transparent 58%),
-      radial-gradient(circle at 70% 28%, color-mix(in srgb, #ffffff 12%, transparent) 0%, transparent 42%);
+      radial-gradient(circle at 24% 76%, color-mix(in srgb, #38bdf8 28%, transparent), transparent 50%),
+      radial-gradient(circle at 76% 22%, color-mix(in srgb, #c084fc 34%, transparent), transparent 50%),
+      radial-gradient(circle at 52% 48%, color-mix(in srgb, var(--ai) 26%, transparent), transparent 58%);
     content: "";
-    filter: blur(9px);
-    inset: -6px;
-    opacity: 0.48;
+    filter: blur(15px);
+    inset: -15px;
+    opacity: 0.62;
     position: absolute;
     border-radius: inherit;
     z-index: -1;
-    animation: ai-glow-pulse 2.8s ease-in-out infinite;
+    animation: ai-button-glow 3s ease-in-out infinite;
   }
 
   .ai-fab::after {
-    background: linear-gradient(145deg, color-mix(in srgb, #ffffff 18%, transparent), transparent 45%);
+    background:
+      radial-gradient(circle at 38% 24%, rgba(255, 255, 255, 0.96), transparent 44%),
+      linear-gradient(145deg, rgba(255, 255, 255, 0.72), rgba(248, 250, 252, 0.18));
     content: "";
     inset: 1px;
-    opacity: 0.55;
+    opacity: 0.86;
     position: absolute;
     border-radius: inherit;
   }
 
   .ai-fab-icon {
-    background: color-mix(in srgb, var(--ai-strong) 48%, var(--ai));
-    @apply relative z-[1] flex h-12 w-12 items-center justify-center rounded-full text-white;
+    background: color-mix(in srgb, var(--ai-soft) 72%, #ffffff);
+    color: var(--ai);
+    @apply relative z-[1] flex h-14 w-14 items-center justify-center rounded-full;
   }
 
-  @keyframes ai-heart-pulse {
+  .dark .ai-fab {
+    background: #f8fafc;
+  }
+
+  @keyframes ai-button-pulse {
     0%, 100% {
       transform: scale(1);
     }
-    46% {
+    52% {
       transform: scale(1.035);
-    }
-    58% {
-      transform: scale(1.015);
-    }
-    70% {
-      transform: scale(1.045);
     }
   }
 
-  @keyframes ai-glow-pulse {
+  @keyframes ai-button-glow {
     0%, 100% {
-      opacity: 0.34;
-      transform: scale(0.96);
+      opacity: 0.42;
+      transform: scale(0.98);
     }
     52% {
-      opacity: 0.58;
-      transform: scale(1.04);
+      opacity: 0.72;
+      transform: scale(1.06);
     }
   }
 

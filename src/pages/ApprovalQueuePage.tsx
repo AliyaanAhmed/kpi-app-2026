@@ -385,9 +385,14 @@ function PerformanceValidationQueue() {
                 const department = departments.find((item) => item.id === kpi?.departmentId)
                 const director = department ? users.find((user) => user.id === department.directorId) : undefined
                 const performanceOwner = users.find((user) => user.role === 'performance_team')
-                const assignedTo = ['submitted_to_director', 'reviewed_by_director'].includes(submission.status)
-                  ? director?.name ?? 'Department Director'
-                  : performanceOwner?.name ?? 'Performance Team'
+                const focalOwner = users.find((user) => user.id === submission.focalPointId)
+                const assignedTo = ['active', 'draft', 'submitted', 'clarification_focal', 'clarification_director', 'clarification_from_performance', 'clarification_from_director'].includes(submission.status)
+                  ? focalOwner?.name ?? focalPoint?.name ?? 'Focal Point'
+                  : ['submitted_to_director', 'reviewed_by_director'].includes(submission.status)
+                    ? director?.name ?? 'Department Director'
+                    : ['published'].includes(submission.status)
+                      ? 'Published View'
+                      : performanceOwner?.name ?? 'Performance Team'
                 const score = queueAiScore(submission)
                 return (
                   <tr className="border-t border-border hover:bg-primary-tint/40" key={submission.id}>
