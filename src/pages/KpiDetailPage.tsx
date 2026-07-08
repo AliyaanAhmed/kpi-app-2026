@@ -1,6 +1,6 @@
-import { ArrowLeft, Check, CheckCircle2, FileText, History, MessageSquare, Send, ShieldCheck, Sparkles, Target, WandSparkles } from 'lucide-react'
+import { ArrowLeft, Check, CheckCircle2, FileText, History, MessageSquare, Save, Send, ShieldCheck, Sparkles, Target, WandSparkles } from 'lucide-react'
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { Modal } from '../components/ui/Modal'
 import { StatusPill } from '../components/ui/StatusPill'
 import { useToast } from '../context/ToastContext'
@@ -32,6 +32,10 @@ function WorkflowCommentCard({ title, author, comment }: { title: string; author
 
 export function KpiDetailPage() {
   const { id } = useParams()
+  const location = useLocation()
+  const returnState = location.state as { returnTo?: string; selectedInstanceId?: string; returnLabel?: string } | null
+  const backTo = returnState?.returnTo ?? '/kpis'
+  const backLabel = returnState?.returnLabel ?? 'Back to KPIs'
   const { activeCycleId } = useAppStore()
   const { showSuccessToast, showErrorToast } = useToast()
   const [clarificationOpen, setClarificationOpen] = useState(false)
@@ -74,6 +78,17 @@ export function KpiDetailPage() {
     (user.role === 'department_director' && activeSubmission.status === 'submitted_to_director')
   )
 
+  function handlePerformanceCommentSave() {
+    if (!activeSubmission) return
+    const comment = effectivePerformanceComment.trim()
+    if (!comment) {
+      showErrorToast('Comment required', 'Enter Performance Team comment before saving this KPI.')
+      return
+    }
+    mockApi.savePerformanceTeamComment(activeSubmission.id, comment)
+    showSuccessToast('Comment saved', 'Performance Team comment has been saved. You can mark the KPI as reviewed from the Validation Queue grid.')
+  }
+
   function handlePerformanceReview() {
     if (!activeSubmission) return
     const comment = effectivePerformanceComment.trim()
@@ -82,7 +97,7 @@ export function KpiDetailPage() {
       return
     }
     mockApi.reviewByPerformanceTeam(activeSubmission.id, comment)
-    showSuccessToast('KPI reviewed', 'Performance Team comment has been saved.')
+    showSuccessToast('KPI reviewed', 'Performance Team comment has been saved and the KPI is marked as reviewed.')
   }
 
   function handleDirectorReview() {
@@ -107,7 +122,13 @@ export function KpiDetailPage() {
 
   return (
     <div className="space-y-5">
-      <Link className="inline-flex items-center gap-2 text-sm font-semibold text-muted hover:text-primary" to="/kpis"><ArrowLeft className="h-4 w-4" /> Back to KPIs</Link>
+      <Link
+        className="inline-flex items-center gap-2 text-sm font-semibold text-muted hover:text-primary"
+        state={returnState?.selectedInstanceId ? { selectedInstanceId: returnState.selectedInstanceId } : undefined}
+        to={backTo}
+      >
+        <ArrowLeft className="h-4 w-4" /> {backLabel}
+      </Link>
       <section className="raised-card p-6">
         <div className="grid gap-5 xl:grid-cols-[1fr_360px] xl:items-start">
           <div>
@@ -277,7 +298,7 @@ export function KpiDetailPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-extrabold">Performance Team Actions</h3>
-                  <p className="mt-1 text-sm text-muted">Review, comment, clarify, and move the KPI forward.</p>
+                  <p className="mt-1 text-sm text-muted">Save the comment, or review the KPI directly when validation is complete.</p>
                 </div>
               </div>
               <div className="mt-4 space-y-3">
@@ -295,6 +316,7 @@ export function KpiDetailPage() {
                   )}
                 </label>
                 <div className="flex flex-wrap gap-2">
+                  {canPerformanceReview ? <button className="btn-primary h-9 text-xs" disabled={!effectivePerformanceComment.trim()} onClick={handlePerformanceCommentSave} type="button"><Save className="h-4 w-4" /> Save Comment</button> : null}
                   {canPerformanceReview ? <button className="btn-primary h-9 text-xs" disabled={!effectivePerformanceComment.trim()} onClick={handlePerformanceReview} type="button"><Check className="h-4 w-4" /> Review</button> : null}
                   {canPerformanceSubmitToDirector ? <button className="btn-primary h-9 text-xs" onClick={handlePerformanceSubmitToDirector} type="button"><Send className="h-4 w-4" /> Submit to Department Director</button> : null}
                   {canPerformancePublish ? <button className="btn-primary h-9 text-xs" onClick={() => { mockApi.publishKpis([activeSubmission.id]); showSuccessToast('KPI published') }} type="button"><ShieldCheck className="h-4 w-4" /> Publish</button> : null}

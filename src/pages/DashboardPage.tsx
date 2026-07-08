@@ -24,7 +24,7 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react'
-import { Fragment, useState } from 'react'
+import { Fragment, useState, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Area,
@@ -43,6 +43,7 @@ import {
 import { StatusPill } from '../components/ui/StatusPill'
 import { AppSelect } from '../components/ui/AppSelect'
 import { useToast } from '../context/ToastContext'
+import { cn } from '../lib/cn'
 import type { Cycle, Department, FocalPointSubmissionInstance, Kpi, KpiSubmission, SubmissionStatus } from '../domain/types'
 import { mockApi } from '../mockApi/mockApi'
 import { useAppStore } from '../store/appStore'
@@ -210,8 +211,8 @@ function FocalPointAssignmentPanel({ submissions }: { submissions: KpiSubmission
                   <p className="mt-1 text-xs font-semibold text-muted">{row.kpiCount} KPIs assigned</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-mono text-sm font-extrabold">{progress}%</p>
-                  <p className="text-xs text-muted">entered</p>
+                  <p className="font-mono text-sm font-extrabold">{row.entered}/{row.kpiCount}</p>
+                  <p className="text-xs text-muted">KPIs entered</p>
                 </div>
               </div>
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-primary-tint">
@@ -222,11 +223,7 @@ function FocalPointAssignmentPanel({ submissions }: { submissions: KpiSubmission
                   transition={{ delay: index * 0.04, duration: 0.45 }}
                 />
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-3 text-xs md:grid-cols-3">
-                <div className="rounded-2xl bg-surface px-3 py-2">
-                  <p className="text-base font-extrabold">{row.entered}/{row.kpiCount}</p>
-                  <p className="mt-0.5 text-muted">KPIs entered</p>
-                </div>
+              <div className="mt-4 grid gap-2 text-xs sm:grid-cols-5">
                 <div className="rounded-2xl bg-surface px-3 py-2">
                   <p className="text-base font-extrabold text-warning">{row.returned}</p>
                   <p className="mt-0.5 text-muted">KPIs returned</p>
@@ -261,6 +258,33 @@ function FocalPointAssignmentPanel({ submissions }: { submissions: KpiSubmission
   )
 }
 
+function SubmitToPerformanceButton({ disabled, onSubmit, fullWidth = false }: { disabled: boolean; onSubmit(): void; fullWidth?: boolean }) {
+  const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number } | null>(null)
+  const showTooltip = (event: MouseEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    setTooltipPosition({
+      top: Math.max(12, rect.top - 62),
+      left: Math.min(window.innerWidth - 316, Math.max(12, rect.right - 300)),
+    })
+  }
+
+  return (
+    <div className="relative shrink-0" onMouseEnter={showTooltip} onMouseLeave={() => setTooltipPosition(null)}>
+      <button className={cn('btn-primary h-11 rounded-[18px] px-4 disabled:cursor-not-allowed disabled:opacity-55', fullWidth ? 'w-full md:w-auto' : '')} disabled={disabled} onClick={onSubmit} type="button">
+        Submit to Performance Team <ArrowRight className="h-4 w-4" />
+      </button>
+      {tooltipPosition ? (
+        <div
+          className="pointer-events-none fixed z-[9999] w-[300px] rounded-2xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted opacity-100 shadow-card"
+          style={{ top: tooltipPosition.top, left: tooltipPosition.left }}
+        >
+          You can submit to Performance Team once all KPIs are entered.
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function FocalPointBulkSubmitPanel({
   submissions,
   alerts,
@@ -284,8 +308,8 @@ function FocalPointBulkSubmitPanel({
   return (
     <section className={alerts.length ? 'grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] xl:items-stretch' : ''}>
       <article className={alerts.length
-        ? 'group flex h-full overflow-hidden rounded-[24px] border border-border bg-surface px-4 py-3 shadow-soft transition hover:border-primary/35 hover:shadow-card'
-        : 'group overflow-hidden rounded-[24px] border border-border bg-surface px-4 py-3 shadow-soft transition hover:border-primary/35 hover:shadow-card'}
+        ? 'group flex h-full rounded-[24px] border border-border bg-surface px-4 py-3 shadow-soft transition hover:border-primary/35 hover:shadow-card'
+        : 'group rounded-[24px] border border-border bg-surface px-4 py-3 shadow-soft transition hover:border-primary/35 hover:shadow-card'}
       >
         {alerts.length ? (
           <div className="flex w-full flex-col justify-center gap-3">
@@ -299,14 +323,7 @@ function FocalPointBulkSubmitPanel({
                   <p className="mt-1 text-base font-extrabold text-primary">{daysRemaining} days remaining</p>
                 </div>
               </div>
-              <div className="relative">
-                <button className="btn-primary h-11 w-full rounded-[18px] px-4 disabled:cursor-not-allowed disabled:opacity-55 md:w-auto" disabled={!allReady} onClick={onSubmit} type="button">
-                  Submit to Performance Team <ArrowRight className="h-4 w-4" />
-                </button>
-                <div className="pointer-events-none absolute bottom-[calc(100%+0.65rem)] right-0 w-[300px] rounded-2xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted opacity-0 shadow-card transition group-hover:opacity-100">
-                  You can submit to Performance Team once all KPIs are entered.
-                </div>
-              </div>
+              <SubmitToPerformanceButton disabled={!allReady} fullWidth onSubmit={onSubmit} />
             </div>
             <div className="h-px bg-border" />
             <div className="flex flex-wrap items-center gap-4">
@@ -350,13 +367,8 @@ function FocalPointBulkSubmitPanel({
                   </p>
                 </div>
               </div>
-              <div className="relative ml-auto shrink-0">
-                <button className="btn-primary h-11 rounded-[18px] px-4 disabled:cursor-not-allowed disabled:opacity-55" disabled={!allReady} onClick={onSubmit} type="button">
-                  Submit to Performance Team <ArrowRight className="h-4 w-4" />
-                </button>
-                <div className="pointer-events-none absolute bottom-[calc(100%+0.65rem)] right-0 w-[300px] rounded-2xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-muted opacity-0 shadow-card transition group-hover:opacity-100">
-                  You can submit to Performance Team once all KPIs are entered.
-                </div>
+              <div className="ml-auto">
+                <SubmitToPerformanceButton disabled={!allReady} onSubmit={onSubmit} />
               </div>
             </div>
           </div>
@@ -2669,49 +2681,88 @@ function PerformanceCycleSignal({
 }
 
 function PerformanceAiAssistancePanel({ submissions }: { submissions: KpiSubmission[] }) {
-  const evidenceRisks = submissions.filter((submission) => submission.attachments.length === 0 && ['submitted_to_performance_team', 'reviewed_by_performance_team', 'with_performance_team'].includes(submission.status))
-  const mismatches = submissions.filter((submission) => submission.actualScore !== undefined && submission.actualScore >= submission.targetScore && submission.attachments.length === 0)
-  const weakNarrative = submissions.filter((submission) => submission.answers.some((answer) => answer.answer.trim().length > 0 && answer.answer.trim().length < 35))
+  const getAnswer = (submission: KpiSubmission, label: string) => {
+    const kpi = mockApi.getKpi(submission.kpiId)
+    const question = kpi?.questions.find((item) => item.label.toLowerCase().includes(label))
+    return submission.answers.find((answer) => answer.questionId === question?.id)?.answer.trim() ?? ''
+  }
+  const hasGenericText = (value: string) => value.length > 0 && value.length < 35
   const rows = [
-    { label: 'Evidence quality risks', value: evidenceRisks.length, ids: evidenceRisks.map((submission) => submission.kpiId) },
-    { label: 'Actual value mismatch with evidence', value: mismatches.length, ids: mismatches.map((submission) => submission.kpiId) },
-    { label: 'Weak analysis/challenges/recommendations', value: weakNarrative.length, ids: weakNarrative.map((submission) => submission.kpiId) },
+    {
+      label: 'KPIs with insufficient evidence',
+      description: 'Evidence is missing or not enough for Performance Team validation.',
+      submissions: submissions.filter((submission) => submission.attachments.length === 0),
+    },
+    {
+      label: 'KPIs where evidence may not match entered actual value',
+      description: 'Actual value looks strong, but supporting evidence is missing or weak.',
+      submissions: submissions.filter((submission) => submission.actualScore !== undefined && submission.actualScore >= submission.targetScore && submission.attachments.length === 0),
+    },
+    {
+      label: 'KPIs where analysis is weak, missing, or unclear',
+      description: 'Analysis needs clearer interpretation before validation.',
+      submissions: submissions.filter((submission) => hasGenericText(getAnswer(submission, 'analysis')) || !getAnswer(submission, 'analysis')),
+    },
+    {
+      label: 'KPIs where challenges are missing or not specific',
+      description: 'Challenge narrative should explain blockers and ownership.',
+      submissions: submissions.filter((submission) => hasGenericText(getAnswer(submission, 'challenge')) || !getAnswer(submission, 'challenge')),
+    },
+    {
+      label: 'KPIs where recommendations are missing or generic',
+      description: 'Recommendations should include specific corrective action.',
+      submissions: submissions.filter((submission) => hasGenericText(getAnswer(submission, 'recommendation')) || !getAnswer(submission, 'recommendation')),
+    },
+    {
+      label: 'KPIs that may need better wording before validation',
+      description: 'AI quality score indicates the wording can be improved.',
+      submissions: submissions.filter((submission) => aiReviewScore(submission) < 70),
+    },
   ]
+  const totalWarnings = rows.reduce((sum, row) => sum + row.submissions.length, 0)
+
   return (
-    <article className="ai-panel">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <div className="ai-icon h-11 w-11">
-            <Sparkles className="h-5 w-5" />
-          </div>
+    <article className="ai-panel relative overflow-hidden">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex gap-4">
+          <div className="ai-icon h-14 w-14"><Sparkles className="h-6 w-6" /></div>
           <div>
             <h2 className="ai-heading text-xl font-extrabold">AI Assistance</h2>
-            <p className="mt-2 text-sm text-muted">Affected KPI IDs are shown as quick links for review.</p>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">AI-supported quality warnings before Performance Team validation.</p>
           </div>
         </div>
+        <div className="ai-chip">{totalWarnings} warnings</div>
       </div>
-      <div className="mt-5 space-y-2">
-        {rows.map((row) => (
-          <div className="ai-surface px-4 py-3 transition hover:border-[var(--ai)]" key={row.label}>
+      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {rows.map((row, index) => (
+          <motion.div
+            className="ai-surface group flex flex-col p-4 transition hover:-translate-y-0.5 hover:border-[var(--ai)]"
+            key={row.label}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.03 }}
+          >
             <div className="flex items-start justify-between gap-3">
-              <span className="text-sm font-semibold">{row.label}</span>
-              <span className="font-display text-2xl font-extrabold leading-none text-[var(--ai-strong)]">{row.value}</span>
+              <p className="line-clamp-2 text-[15px] font-extrabold leading-6 text-text">{row.label}</p>
+              <span className="rounded-full px-2.5 py-1 font-mono text-sm font-extrabold" style={{ backgroundColor: 'color-mix(in srgb, var(--ai) 12%, transparent)', color: 'var(--ai-strong)' }}>{row.submissions.length}</span>
             </div>
+            <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-muted">{row.description}</p>
             <div className="mt-3 flex flex-wrap gap-1.5">
-              {row.ids.length ? row.ids.slice(0, 8).map((id) => (
+              {row.submissions.slice(0, 8).map((submission) => (
                 <Link
-                  className="rounded-full border border-[var(--ai-border)] bg-white/75 px-2 py-0.5 font-mono text-[10px] font-extrabold text-[var(--ai-strong)] transition hover:bg-[var(--ai)] hover:text-white dark:bg-white/5"
-                  key={id}
-                  to={`/kpis/${id}`}
+                  className="rounded-full border border-[var(--ai-border)] bg-white/70 px-2 py-1 font-mono text-[11px] font-extrabold text-[var(--ai-strong)] transition hover:bg-[var(--ai)] hover:text-white dark:bg-white/5"
+                  key={submission.id}
+                  to={`/kpis/${submission.kpiId}`}
                 >
-                  {shortKpiId(id)}
+                  {shortKpiId(submission.kpiId)}
                 </Link>
-              )) : (
-                <span className="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-bold text-muted dark:bg-white/5">No KPI IDs flagged</span>
-              )}
-              {row.ids.length > 8 ? <span className="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-bold text-muted dark:bg-white/5">+{row.ids.length - 8}</span> : null}
+              ))}
+              {!row.submissions.length ? (
+                <span className="rounded-full bg-white/70 px-2.5 py-1 text-[11px] font-bold text-muted dark:bg-white/5">No KPI IDs flagged</span>
+              ) : null}
+              {row.submissions.length > 8 ? <span className="rounded-full bg-white/70 px-2.5 py-1 text-[11px] font-bold text-muted dark:bg-white/5">+{row.submissions.length - 8}</span> : null}
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
     </article>
@@ -2894,15 +2945,17 @@ function PerformanceDashboard() {
       </section>
       <PerformanceCycleSignal instances={instances} activeCycleId={activeCycleId} />
       <section className="grid gap-5 xl:grid-cols-2">
-        <PerformanceAiAssistancePanel submissions={submissions} />
+        <div className="xl:col-span-2">
+          <PerformanceAiAssistancePanel submissions={submissions} />
+        </div>
         <PerformanceChangeRequestWidget />
-      </section>
-      <section className="grid gap-5 xl:grid-cols-2">
         <KpiPerformancePanel submissions={submissions} />
-        <FocalPointSubmissionPanel submissions={submissions} />
       </section>
       <section className="grid gap-5 xl:grid-cols-2">
+        <FocalPointSubmissionPanel submissions={submissions} />
         <TargetActualPanel submissions={submissions} />
+      </section>
+      <section>
         <PerformanceTrendPanel submissions={submissions} />
       </section>
     </div>
@@ -3037,9 +3090,7 @@ function DirectorCycleSubmissionWidget({ submissions, activeCycleId }: { submiss
 }
 
 function DirectorFocalPointProgress({ submissions }: { submissions: KpiSubmission[] }) {
-  const [page, setPage] = useState(0)
   const users = mockApi.getUsers()
-  const pageSize = 4
   const rows = Array.from(
     submissions.reduce((map, submission) => {
       const focalPoint = users.find((user) => user.id === submission.focalPointId)
@@ -3048,181 +3099,70 @@ function DirectorFocalPointProgress({ submissions }: { submissions: KpiSubmissio
         name: focalPoint?.name ?? 'Focal Point',
         total: 0,
         received: 0,
+        returned: 0,
       }
       existing.total += 1
       if (['submitted_to_director', 'reviewed_by_director', 'approved_by_director', 'director_approved', 'published'].includes(submission.status)) existing.received += 1
+      if (['clarification_director', 'clarification_from_director'].includes(submission.status)) existing.returned += 1
       map.set(submission.focalPointId, existing)
       return map
-    }, new Map<string, { id: string; name: string; total: number; received: number }>()),
+    }, new Map<string, { id: string; name: string; total: number; received: number; returned: number }>()),
   ).map(([, value]) => value)
-  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize))
-  const visibleRows = rows.slice(page * pageSize, page * pageSize + pageSize)
+  const totalKpis = rows.reduce((sum, row) => sum + row.total, 0)
+  const receivedKpis = rows.reduce((sum, row) => sum + row.received, 0)
+  const returnedKpis = rows.reduce((sum, row) => sum + row.returned, 0)
+  const pendingKpis = Math.max(0, totalKpis - receivedKpis - returnedKpis)
+  const receivedFocalPoints = rows.filter((row) => row.received > 0).length
+  const pendingFocalPoints = Math.max(0, rows.length - receivedFocalPoints)
+  const overallProgress = Math.round((receivedKpis / Math.max(1, totalKpis)) * 100)
 
   return (
-    <article className="card p-5 transition hover:shadow-card">
+    <article className="group flex h-full flex-col overflow-hidden rounded-[20px] border border-border bg-surface px-4 py-4 shadow-[0_8px_20px_rgba(15,23,42,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary-tint/70 hover:shadow-[0_12px_26px_rgba(15,23,42,0.07)]">
       <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-extrabold">Focal Points</h2>
+        <div className="min-w-0">
+          <h2 className="text-[17px] font-extrabold tracking-[0.01em] text-text">Focal Point Submission</h2>
+          <div className="mt-2.5 flex flex-wrap items-end gap-1.5">
+            <span className="font-display text-[30px] font-extrabold leading-none tracking-tight text-primary">{rows.length}</span>
+            <span className="pb-0.5 text-xs font-extrabold text-muted">focal points</span>
+          </div>
         </div>
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary-tint text-primary">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-tint text-primary transition-transform duration-300 group-hover:scale-105">
           <Users className="h-5 w-5" />
         </div>
       </div>
-      <div className="space-y-2">
-        {visibleRows.map((row, index) => {
-          const progress = Math.round((row.received / Math.max(1, row.total)) * 100)
-          const pending = row.received === 0
-          return (
-            <motion.div
-              className="rounded-2xl border border-border bg-surface-raised p-3 transition hover:border-primary/30"
-              key={row.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.035 }}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-extrabold">{row.name}</p>
-                  <p className="mt-1 text-xs text-muted">{row.total} KPIs in department scope</p>
-                </div>
-                <span className={pending ? 'rounded-full bg-danger/10 px-2.5 py-1 text-xs font-bold text-danger' : 'rounded-full bg-success/10 px-2.5 py-1 text-xs font-bold text-success'}>
-                  {pending ? 'Pending' : 'Received'}
-                </span>
-              </div>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-primary-tint">
-                <motion.div className="h-full rounded-full bg-primary" initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={{ delay: index * 0.035, duration: 0.45 }} />
-              </div>
-            </motion.div>
-          )
-        })}
+      <div className="mb-4 w-full">
+        <div className="mb-1 flex items-center justify-between text-[11px] font-bold text-muted">
+          <span>Progress</span>
+          <span className="font-mono text-primary">{overallProgress}%</span>
+        </div>
+        <div className="h-2 overflow-hidden rounded-full bg-primary-tint">
+          <motion.div className="h-full rounded-full bg-primary" initial={{ width: 0 }} animate={{ width: `${overallProgress}%` }} transition={{ duration: 0.45 }} />
+        </div>
+      </div>
+      <div className="mt-3 space-y-1.5">
+        <div className="flex items-center justify-between gap-3 text-xs">
+          <span className="truncate font-semibold text-muted">Received Focal Points</span>
+          <span className="font-extrabold text-success">{receivedFocalPoints} / {rows.length}</span>
+        </div>
+        <div className="flex items-center justify-between gap-3 text-xs">
+          <span className="truncate font-semibold text-muted">Pending Focal Points</span>
+          <span className="font-extrabold text-warning">{pendingFocalPoints}</span>
+        </div>
+        <div className="flex items-center justify-between gap-3 text-xs">
+          <span className="truncate font-semibold text-muted">Received KPIs</span>
+          <span className="font-extrabold text-success">{receivedKpis} KPIs</span>
+        </div>
+        <div className="flex items-center justify-between gap-3 text-xs">
+          <span className="truncate font-semibold text-muted">Pending KPIs</span>
+          <span className="font-extrabold text-warning">{pendingKpis} KPIs</span>
+        </div>
+        <div className="flex items-center justify-between gap-3 text-xs">
+          <span className="truncate font-semibold text-muted">Returned / Clarification</span>
+          <span className="font-extrabold text-danger">{returnedKpis} KPIs</span>
+        </div>
         {!rows.length ? (
           <div className="rounded-2xl border border-border bg-surface-raised p-6 text-center text-sm text-muted">No focal point submissions are visible for this department.</div>
         ) : null}
-      </div>
-      {rows.length > pageSize ? (
-        <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
-          <p className="font-mono text-xs text-muted">Page {page + 1} / {pageCount}</p>
-          <div className="flex gap-2">
-            <button className="btn-secondary h-8 w-8 rounded-full p-0" disabled={page === 0} onClick={() => setPage((current) => Math.max(0, current - 1))} type="button" aria-label="Previous focal points">
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button className="btn-secondary h-8 w-8 rounded-full p-0" disabled={page >= pageCount - 1} onClick={() => setPage((current) => Math.min(pageCount - 1, current + 1))} type="button" aria-label="Next focal points">
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      ) : null}
-    </article>
-  )
-}
-
-function DirectorAiAssistanceWidget({ submissions }: { submissions: KpiSubmission[] }) {
-  const getAnswer = (submission: KpiSubmission, label: string) => {
-    const kpi = mockApi.getKpi(submission.kpiId)
-    const question = kpi?.questions.find((item) => item.label.toLowerCase().includes(label))
-    return submission.answers.find((answer) => answer.questionId === question?.id)?.answer.trim() ?? ''
-  }
-  const hasWeakText = (value: string) => value.length < 35
-  const uniqueIds = (items: KpiSubmission[]) => Array.from(new Set(items.map((submission) => submission.kpiId)))
-
-  const insufficientEvidence = submissions.filter((submission) => submission.attachments.length === 0)
-  const evidenceMismatch = submissions.filter((submission) => submission.actualScore !== undefined && submission.actualScore >= submission.targetScore && submission.attachments.length === 0)
-  const weakAnalysis = submissions.filter((submission) => hasWeakText(getAnswer(submission, 'analysis')))
-  const weakChallenges = submissions.filter((submission) => hasWeakText(getAnswer(submission, 'challenge')))
-  const weakRecommendations = submissions.filter((submission) => hasWeakText(getAnswer(submission, 'recommendation')))
-  const betterWording = submissions.filter((submission) => aiReviewScore(submission) < 70)
-  const allWarningIds = Array.from(new Set([
-    ...uniqueIds(insufficientEvidence),
-    ...uniqueIds(evidenceMismatch),
-    ...uniqueIds(weakAnalysis),
-    ...uniqueIds(weakChallenges),
-    ...uniqueIds(weakRecommendations),
-    ...uniqueIds(betterWording),
-  ]))
-
-  const rows = [
-    {
-      label: 'KPIs with insufficient evidence',
-      description: 'Evidence is missing or not enough to support the KPI result.',
-      ids: uniqueIds(insufficientEvidence),
-    },
-    {
-      label: 'KPIs where evidence may not match entered actual value',
-      description: 'Actual values look strong, but the available evidence may not support them.',
-      ids: uniqueIds(evidenceMismatch),
-    },
-    {
-      label: 'KPIs where analysis is weak, missing, or unclear',
-      description: 'Analysis should clearly explain performance movement and result drivers.',
-      ids: uniqueIds(weakAnalysis),
-    },
-    {
-      label: 'KPIs where challenges are missing or not specific',
-      description: 'Challenges should identify blockers, dependencies, ownership, and timing.',
-      ids: uniqueIds(weakChallenges),
-    },
-    {
-      label: 'KPIs where recommendations are missing or generic',
-      description: 'Recommendations should include specific corrective actions and follow-up.',
-      ids: uniqueIds(weakRecommendations),
-    },
-    {
-      label: 'KPIs that may need better wording before submission',
-      description: 'AI review score indicates the response should be improved before approval.',
-      ids: uniqueIds(betterWording),
-    },
-    {
-      label: 'AI-supported quality warnings before submitting to Performance Team',
-      description: 'Combined AI watchlist across evidence, value consistency, and response quality.',
-      ids: allWarningIds,
-    },
-  ]
-
-  return (
-    <article className="ai-panel">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <div className="ai-icon h-11 w-11">
-            <Sparkles className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="ai-heading text-xl font-extrabold">AI Assistance</h2>
-          </div>
-        </div>
-        <div className="ai-chip">{allWarningIds.length} KPIs flagged</div>
-      </div>
-      <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-3">
-        {rows.map((row, index) => (
-          <motion.div
-            className="ai-surface flex min-h-[132px] flex-col px-4 py-3 transition hover:-translate-y-0.5 hover:border-[var(--ai)]"
-            key={row.label}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.03 }}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <span className="line-clamp-2 text-[13px] font-extrabold leading-5 text-text">{row.label}</span>
-              <span className="rounded-full px-2 py-0.5 font-mono text-xs font-extrabold" style={{ backgroundColor: 'color-mix(in srgb, var(--ai) 12%, transparent)', color: 'var(--ai-strong)' }}>
-                {row.ids.length}
-              </span>
-            </div>
-            <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted">{row.description}</p>
-            <div className="mt-auto flex flex-wrap gap-1.5 pt-3">
-              {row.ids.length ? row.ids.slice(0, 8).map((id) => (
-                <Link
-                  className="rounded-full border border-[var(--ai-border)] bg-white/75 px-2 py-0.5 font-mono text-[10px] font-extrabold text-[var(--ai-strong)] transition hover:bg-[var(--ai)] hover:text-white dark:bg-white/5"
-                  key={id}
-                  to={`/kpis/${id}`}
-                >
-                  {shortKpiId(id)}
-                </Link>
-              )) : (
-                <span className="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-bold text-muted dark:bg-white/5">No affected KPIs</span>
-              )}
-              {row.ids.length > 8 ? <span className="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-bold text-muted dark:bg-white/5">+{row.ids.length - 8}</span> : null}
-            </div>
-          </motion.div>
-        ))}
       </div>
     </article>
   )
@@ -3231,21 +3171,19 @@ function DirectorAiAssistanceWidget({ submissions }: { submissions: KpiSubmissio
 function DirectorDashboard() {
   const { activeCycleId } = useAppStore.getState()
   const submissions = scopedSubmissions()
-  const user = mockApi.getCurrentUser()
-  const department = user.departmentId ? mockApi.getDepartment(user.departmentId) : undefined
   const pendingReview = submissions.filter((submission) => submission.status === 'submitted_to_director').length
   const reviewed = submissions.filter((submission) => ['reviewed_by_director', 'approved_by_director', 'director_approved', 'published'].includes(submission.status)).length
   const returned = submissions.filter((submission) => ['clarification_director', 'clarification_from_director'].includes(submission.status)).length
   const reviewProgress = Math.round((reviewed / Math.max(1, pendingReview + reviewed + returned)) * 100)
   return (
     <div className="space-y-5">
-      <Hero eyebrow="Department Director Dashboard" title={department ? `${department.name} approval workspace` : 'Department approval workspace'} copy="Review validated KPI submissions for your assigned department and approve or return clarification." chips={[{ label: 'Department', value: department?.name ?? 'Unassigned' }, { label: 'Pending Review', value: pendingReview }, { label: 'Reviewed', value: reviewed }]} />
       <section className="grid gap-5 xl:grid-cols-2">
         <PerformanceProgressCard
-          title="My Review"
+          title="My Review Progress"
           icon={ShieldCheck}
           progress={reviewProgress}
           to="/approval/director"
+          compact
           rows={[
             { label: 'Pending Review', value: `${pendingReview} KPIs`, tone: 'font-extrabold text-warning' },
             { label: 'Reviewed', value: `${reviewed} KPIs`, tone: 'font-extrabold text-success' },
@@ -3255,14 +3193,12 @@ function DirectorDashboard() {
         <DirectorFocalPointProgress submissions={submissions} />
       </section>
       <DirectorCycleSubmissionWidget submissions={submissions} activeCycleId={activeCycleId} />
+      <PerformanceAiAssistancePanel submissions={submissions} />
       <section className="grid gap-5 xl:grid-cols-2">
         <KpiPerformancePanel submissions={submissions} />
-        <DirectorAiAssistanceWidget submissions={submissions} />
-      </section>
-      <section className="grid gap-5 xl:grid-cols-2">
         <RadarPanel submissions={submissions} />
-        <PerformanceTrendPanel submissions={submissions} />
       </section>
+      <PerformanceTrendPanel submissions={submissions} />
     </div>
   )
 }
@@ -3342,6 +3278,7 @@ function ExecutiveDashboard({ orgWide = false }: { orgWide?: boolean }) {
         <MetricCard label="Director Review" value={pendingDirector + directorApproved} detail="Awaiting or approved by directors" icon={Users} color={tones[2]} index={2} />
         <MetricCard label="Published KPIs" value={published} detail="Final visible records" icon={CheckCircle2} color={tones[3]} index={3} />
       </section>
+      <PerformanceAiAssistancePanel submissions={submissions} />
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)]">
         <article className="card p-5 transition hover:shadow-card">
           <div className="mb-4 flex items-start justify-between gap-4">

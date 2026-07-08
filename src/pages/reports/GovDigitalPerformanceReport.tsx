@@ -283,6 +283,7 @@ export function GovDigitalPerformanceReport() {
                   </div>
                 </section>
                 <RankingPanel items={departmentItems} />
+                <KpiWorkspace attention={attention} counts={attentionCounts} kpis={visibleKpis} onAttention={setAttention} onExpand={setExpandedKpi} expandedKpi={expandedKpi} totalCount={kpis.length} />
               </motion.div>
             )}
 
@@ -297,7 +298,22 @@ export function GovDigitalPerformanceReport() {
                     ))}
                   </div>
                 </section>
-                <KpiWorkspace attention={attention} counts={attentionCounts} kpis={visibleKpis} onAttention={setAttention} onExpand={setExpandedKpi} expandedKpi={expandedKpi} totalCount={kpis.length} />
+                <KpiWorkspace
+                  attention={attention}
+                  counts={attentionCounts}
+                  kpis={visibleKpis}
+                  onAttention={setAttention}
+                  onClearDepartment={() => {
+                    setScreen('sector')
+                    setDepartment('')
+                    setAttention('')
+                    setExpandedKpi('')
+                  }}
+                  onExpand={setExpandedKpi}
+                  expandedKpi={expandedKpi}
+                  selectedDepartment={department}
+                  totalCount={kpis.length}
+                />
                 <AdditionalAnalysis allRows={allQuarterScopedRows} rows={scopedRows} />
                 <RankingPanel items={departmentItems} />
               </motion.div>
@@ -588,7 +604,27 @@ function AnalysisCard({ label, value, note }: { label: string; value: string; no
   )
 }
 
-function KpiWorkspace({ attention, counts, kpis, totalCount, expandedKpi, onAttention, onExpand }: { attention: string; counts: Record<string, number>; kpis: KpiMetric[]; totalCount: number; expandedKpi: string; onAttention(value: string): void; onExpand(value: string): void }) {
+function KpiWorkspace({
+  attention,
+  counts,
+  kpis,
+  totalCount,
+  expandedKpi,
+  selectedDepartment,
+  onAttention,
+  onClearDepartment,
+  onExpand,
+}: {
+  attention: string
+  counts: Record<string, number>
+  kpis: KpiMetric[]
+  totalCount: number
+  expandedKpi: string
+  selectedDepartment?: string
+  onAttention(value: string): void
+  onClearDepartment?(): void
+  onExpand(value: string): void
+}) {
   return (
     <section className="card overflow-hidden" id="report-kpi-workspace">
       <div className="border-b border-border p-5">
@@ -599,6 +635,19 @@ function KpiWorkspace({ attention, counts, kpis, totalCount, expandedKpi, onAtte
             <input className="field h-11 w-full pl-10" placeholder="Search in current KPI grid..." />
           </div>
         </div>
+        {selectedDepartment ? (
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-extrabold uppercase tracking-[0.12em] text-muted">Department</span>
+            <button
+              className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary-tint px-3 py-1.5 text-sm font-extrabold text-primary transition hover:border-primary hover:bg-primary hover:text-white"
+              onClick={onClearDepartment}
+              type="button"
+            >
+              {selectedDepartment}
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ) : null}
         <div className="mt-4 flex flex-wrap gap-2">
           {attentionFilters.map((filter) => (
             <button

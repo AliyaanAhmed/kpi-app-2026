@@ -51,6 +51,9 @@ function cycleKpis(cycleId: string) {
   return appData.kpis.filter((kpi) => template?.kpiIds.includes(kpi.id))
 }
 
+const demoFocalPointId = 'u-fp-demo'
+const demoFocalPointKpiIds = new Set(['kpi-037', 'kpi-038', 'kpi-039', 'kpi-040'])
+
 function assignedFocalPointId(kpi: Kpi, cycleId: string) {
   const appData = data()
   const existing = appData.submissions.find((submission) => submission.cycleId === cycleId && submission.kpiId === kpi.id)
@@ -67,7 +70,10 @@ function canRoleSeeKpi(role: Role, userId: string, cycleId: string, kpi: Kpi) {
   const user = appData.users.find((item) => item.id === userId)
   if (!user) return false
   if (role === 'admin' || role === 'performance_team') return true
-  if (role === 'focal_point') return assignedFocalPointId(kpi, cycleId) === userId
+  if (role === 'focal_point') {
+    if (userId === demoFocalPointId) return demoFocalPointKpiIds.has(kpi.id)
+    return assignedFocalPointId(kpi, cycleId) === userId
+  }
   if (role === 'department_director') return kpi.departmentId === user.departmentId
   if (role === 'executive_director') {
     const submission = appData.submissions.find((item) => item.cycleId === cycleId && item.kpiId === kpi.id)
@@ -240,7 +246,10 @@ export const mockApi = {
       const kpi = appData.kpis.find((item) => item.id === submission.kpiId)
       if (!kpi || !user) return false
       if (role === 'admin' || role === 'performance_team') return true
-      if (role === 'focal_point') return submission.focalPointId === userId
+      if (role === 'focal_point') {
+        if (userId === demoFocalPointId) return submission.focalPointId === userId && demoFocalPointKpiIds.has(submission.kpiId)
+        return submission.focalPointId === userId
+      }
       if (role === 'department_director') return kpi.departmentId === user.departmentId
       if (role === 'executive_director') {
         return (
@@ -369,6 +378,14 @@ export const mockApi = {
     const updated: KpiSubmission = { ...submission, performanceTeamComment: trimmedComment }
     useAppStore.getState().upsertSubmission(updated)
     return stamp(updated, 'reviewed_by_performance_team', note)
+  },
+  savePerformanceTeamComment: (id: string, comment: string) => {
+    const submission = data().submissions.find((item) => item.id === id)
+    const trimmedComment = comment.trim()
+    if (!submission || !['submitted_to_performance_team', 'with_performance_team'].includes(submission.status) || !trimmedComment) return submission
+    const updated: KpiSubmission = { ...submission, performanceTeamComment: trimmedComment }
+    useAppStore.getState().upsertSubmission(updated)
+    return updated
   },
   submitToDirector: (id: string, note = 'Validated and submitted to Department Director') => {
     const submission = data().submissions.find((item) => item.id === id)

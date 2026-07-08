@@ -20,7 +20,7 @@ const departments = [
 
 const users = [
   { id: 'u-admin', name: 'Mariam Al Nuaimi', email: 'admin@govdigital.local', role: 'admin', active: true },
-  { id: 'u-pa-1', name: 'Ali Raza', email: 'ali@govdigital.local', role: 'performance_team', active: true },
+  { id: 'u-pa-1', name: 'Hussain Mohammed', email: 'hussain.mohammed@govdigital.local', role: 'performance_team', active: true },
   { id: 'u-ed-digital', name: 'Digital Government Executive Director', email: 'executive@govdigital.local', role: 'executive_director', sectorId: 'sec-digital', active: true },
   { id: 'u-ed-operations', name: 'Government Operations Executive Director', email: 'operations.executive@govdigital.local', role: 'executive_director', sectorId: 'sec-operations', active: true },
   { id: 'u-ed-citizen', name: 'Citizen Services Executive Director', email: 'citizen.executive@govdigital.local', role: 'executive_director', sectorId: 'sec-citizen', active: true },
@@ -37,12 +37,15 @@ const users = [
   { id: 'u-fp-data', name: 'Gaith - Focal Point 1', email: 'data.focal@govdigital.local', role: 'focal_point', departmentId: 'dep-data', departmentIds: ['dep-data', 'dep-cyber', 'dep-enterprise'], sectorId: 'sec-digital', active: true },
   { id: 'u-fp-cloud', name: 'Ihab - Focal Point 2', email: 'cloud.focal@govdigital.local', role: 'focal_point', departmentId: 'dep-cloud', departmentIds: ['dep-cloud', 'dep-finance', 'dep-experience'], sectorId: 'sec-digital', active: true },
   { id: 'u-fp-shared', name: 'Ali Solomoni - Focal Point 3', email: 'shared.focal@govdigital.local', role: 'focal_point', departmentId: 'dep-data', departmentIds: ['dep-data', 'dep-cloud', 'dep-procurement', 'dep-support', 'dep-learning'], sectorId: 'sec-digital', active: true },
+  { id: 'u-fp-demo', name: 'Noura Al Mansoori - Focal Point 4', email: 'noura.focal@govdigital.local', role: 'focal_point', departmentId: 'dep-data', departmentIds: ['dep-data'], sectorId: 'sec-digital', active: true },
 ] satisfies AppData['users']
 
 const teams = departments.map((department, index) => ({
   id: `team-${department.id}`,
   departmentId: department.id,
-  focalPointIds: index % 3 === 0 ? ['u-fp-data', 'u-fp-shared'] : index % 3 === 1 ? ['u-fp-cloud', 'u-fp-shared'] : ['u-fp-shared', 'u-fp-data'],
+  focalPointIds: department.id === 'dep-data'
+    ? ['u-fp-data', 'u-fp-shared']
+    : index % 3 === 1 ? ['u-fp-cloud', 'u-fp-shared'] : ['u-fp-shared', 'u-fp-data'],
 }))
 
 const categories = ['Financial', 'Customer', 'Internal Process', 'Learning & Growth', 'Digital Excellence']
@@ -53,7 +56,7 @@ const defaultKpiQuestions = [
   { id: 'recommendations', label: 'Recommendations' },
 ]
 
-const kpis: Kpi[] = departments.flatMap((department, departmentIndex) =>
+const baseKpis: Kpi[] = departments.flatMap((department, departmentIndex) =>
   Array.from({ length: 4 }, (_, localIndex) => {
     const index = departmentIndex * 4 + localIndex
     const category = categories[index % categories.length]
@@ -68,6 +71,18 @@ const kpis: Kpi[] = departments.flatMap((department, departmentIndex) =>
       questions: defaultKpiQuestions.map((question) => ({ ...question })),
     }
   }))
+
+const demoSubmissionKpis: Kpi[] = ['Financial', 'Customer', 'Internal Process', 'Digital Excellence'].map((category, index) => ({
+  id: `kpi-${String(37 + index).padStart(3, '0')}`,
+  name: `Data Governance Client Demo ${category} KPI`,
+  description: `Demo KPI for client walkthrough of the Data Governance submission workflow.`,
+  category,
+  departmentId: 'dep-data',
+  targetType: 'percentage',
+  questions: defaultKpiQuestions.map((question) => ({ ...question })),
+}))
+
+const kpis: Kpi[] = [...baseKpis, ...demoSubmissionKpis]
 
 const templates = [
   {
@@ -141,7 +156,7 @@ const actualScoreMix = [
   79,
 ]
 
-const demoAssignments: { kpiId: string; focalPointId: string; status: SubmissionStatus; actualScore?: number }[] = kpis.map((kpi, index) => {
+const demoAssignments: { kpiId: string; focalPointId: string; status: SubmissionStatus; actualScore?: number }[] = baseKpis.map((kpi, index) => {
   const team = teams.find((item) => item.departmentId === kpi.departmentId)!
   return {
     kpiId: kpi.id,
@@ -198,6 +213,37 @@ const submissions: KpiSubmission[] = demoAssignments.map(({ kpiId, focalPointId,
   }
 })
 
+const demoReadySubmissions: KpiSubmission[] = demoSubmissionKpis.map((kpi, index) => {
+  const cycle = cycles.find((item) => item.id === 'cycle-q2-2026')!
+  const actualScore = [94, 91, 88, 96][index]
+  return {
+    id: `sub-cycle-q2-2026-${kpi.id}`,
+    kpiId: kpi.id,
+    cycleId: 'cycle-q2-2026',
+    focalPointId: 'u-fp-demo',
+    teamId: 'team-dep-data',
+    targetScore: cycle.targetScore,
+    actualScore,
+    answers: kpi.questions.map((question) => ({
+      questionId: question.id,
+      answer: `${question.label} narrative for ${kpi.name}. The KPI is ready for Performance Team validation with measurable actuals, evidence alignment, and clear governance context.`,
+    })),
+    attachments: [{ id: `att-${kpi.id}`, fileName: `${kpi.name}.pdf`, url: '#' }],
+    status: 'draft',
+    history: [
+      {
+        id: `hist-${kpi.id}-demo-draft`,
+        actorId: 'u-fp-demo',
+        actorRole: 'focal_point',
+        fromStatus: 'active',
+        toStatus: 'draft',
+        note: 'Demo KPI response completed and saved as draft for bulk submission.',
+        timestamp: `2026-06-${String(21 + index).padStart(2, '0')}T10:15:00.000Z`,
+      },
+    ],
+  }
+})
+
 export const seedData: AppData = {
   sectors,
   departments,
@@ -206,6 +252,6 @@ export const seedData: AppData = {
   kpis,
   templates,
   cycles,
-  submissions,
+  submissions: [...submissions, ...demoReadySubmissions],
   changeRequests: [],
 }

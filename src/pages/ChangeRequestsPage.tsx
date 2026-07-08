@@ -288,12 +288,15 @@ function FocalPointChangeRequests() {
 function PerformanceTeamChangeRequests() {
   const { showSuccessToast } = useToast()
   const [statusFilter, setStatusFilter] = useState<'all' | ChangeRequestStatus>('pending')
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null)
   const [adminNotes, setAdminNotes] = useState<Record<string, string>>({})
   const [proposedValues, setProposedValues] = useState<Record<string, string>>({})
-  const requests = mockApi
+  const allRequests = mockApi
     .getChangeRequests()
-    .filter((request) => statusFilter === 'all' || request.status === statusFilter)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  const requests = allRequests
+    .filter((request) => statusFilter === 'all' || request.status === statusFilter)
+  const selectedRequest = selectedRequestId ? allRequests.find((request) => request.id === selectedRequestId) : undefined
 
   function decide(request: ChangeRequest, decision: 'approved' | 'rejected') {
     const updated = mockApi.decideChangeRequest(
@@ -307,6 +310,7 @@ function PerformanceTeamChangeRequests() {
         decision === 'approved' ? 'Change request approved' : 'Change request rejected',
         decision === 'approved' ? 'The approved KPI change has been applied to mock data.' : 'The focal point can view the rejection note.',
       )
+      setSelectedRequestId(updated.id)
     }
   }
 
@@ -332,32 +336,37 @@ function PerformanceTeamChangeRequests() {
         </div>
       </section>
 
-      <div className="flex flex-wrap items-center gap-2">
-        {(['pending', 'all', 'approved', 'rejected'] as const).map((status) => (
-          <button
-            className={cn(
-              'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold transition',
-              statusFilter === status ? 'bg-primary text-white' : 'border border-border bg-surface-raised hover:bg-primary-tint hover:text-primary',
-            )}
-            key={status}
-            onClick={() => setStatusFilter(status)}
-            type="button"
-          >
-            {titleCase(status)}
-          </button>
-        ))}
-      </div>
+      {!selectedRequest ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {(['pending', 'all', 'approved', 'rejected'] as const).map((status) => (
+            <button
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold transition',
+                statusFilter === status ? 'bg-primary text-white' : 'border border-border bg-surface-raised hover:bg-primary-tint hover:text-primary',
+              )}
+              key={status}
+              onClick={() => setStatusFilter(status)}
+              type="button"
+            >
+              {titleCase(status)}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
-      <section className="space-y-4">
-        {requests.map((request, index) => {
-          const { kpi, department, cycle, user } = requestMeta(request)
-          return (
+      {selectedRequest ? (() => {
+        const request = selectedRequest
+        const { kpi, department, cycle, user } = requestMeta(request)
+        return (
+          <section className="space-y-4">
+            <button className="inline-flex items-center gap-2 text-sm font-extrabold text-muted transition hover:text-primary" onClick={() => setSelectedRequestId(null)} type="button">
+              <ArrowRight className="h-4 w-4 rotate-180" /> Back to Change Requests
+            </button>
             <motion.article
               className="card overflow-hidden"
               key={request.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.03 }}
             >
               <div className="border-b border-border bg-surface-raised p-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -440,20 +449,66 @@ function PerformanceTeamChangeRequests() {
                 )}
               </div>
             </motion.article>
-          )
-        })}
-        {!requests.length ? (
-          <div className="card p-10">
-            <div className="mx-auto flex max-w-md flex-col items-center text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-tint text-primary">
-                <ClipboardX className="h-6 w-6" />
-              </div>
-              <p className="mt-4 text-base font-extrabold text-text">No change requests found</p>
-              <p className="mt-2 text-sm leading-6 text-muted">Focal point requests will appear here after submission or when you change the status filter.</p>
-            </div>
+          </section>
+        )
+      })() : (
+        <section className="card overflow-hidden">
+          <div className="border-b border-border px-5 py-4">
+            <h3 className="text-xl font-extrabold">Change Request Records</h3>
+            <p className="mt-1 text-sm text-muted">Click a CR row to open its review form.</p>
           </div>
-        ) : null}
-      </section>
+          <div className="overflow-auto">
+            <table className="w-full min-w-[980px] text-left text-sm">
+              <thead className="bg-surface-raised text-xs uppercase text-muted">
+                <tr>
+                  <th className="px-4 py-3">ID</th>
+                  <th>KPI</th>
+                  <th>Department</th>
+                  <th>Focal Point</th>
+                  <th>Request Type</th>
+                  <th>Cycle</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                {requests.map((request) => {
+                  const { kpi, department, cycle, user } = requestMeta(request)
+                  return (
+                    <tr
+                      className="cursor-pointer border-t border-border transition hover:bg-primary-tint"
+                      key={request.id}
+                      onClick={() => setSelectedRequestId(request.id)}
+                    >
+                      <td className="px-4 py-3"><span className="rounded-full bg-primary-tint px-2.5 py-1 font-mono text-xs font-extrabold text-primary">{request.id.toUpperCase()}</span></td>
+                      <td className="max-w-[280px] truncate font-semibold text-text">{kpi?.name ?? 'KPI'}</td>
+                      <td>{department?.name ?? '-'}</td>
+                      <td>{user?.name ?? '-'}</td>
+                      <td>{titleCase(request.type)}</td>
+                      <td>{cycle?.label ?? '-'}</td>
+                      <td><ChangeRequestPill status={request.status} /></td>
+                      <td className="font-mono text-xs text-muted">{new Date(request.createdAt).toLocaleDateString()}</td>
+                    </tr>
+                  )
+                })}
+                {!requests.length ? (
+                  <tr>
+                    <td className="px-4 py-12" colSpan={8}>
+                      <div className="mx-auto flex max-w-md flex-col items-center text-center">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-tint text-primary">
+                          <ClipboardX className="h-6 w-6" />
+                        </div>
+                        <p className="mt-4 text-base font-extrabold text-text">No change requests found</p>
+                        <p className="mt-2 text-sm leading-6 text-muted">Focal point requests will appear here after submission or when you change the status filter.</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </div>
   )
 }

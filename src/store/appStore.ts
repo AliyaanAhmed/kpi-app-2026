@@ -7,12 +7,70 @@ const demoFocalPointNames: Record<string, string> = {
   'u-fp-data': 'Gaith - Focal Point 1',
   'u-fp-cloud': 'Ihab - Focal Point 2',
   'u-fp-shared': 'Ali Solomoni - Focal Point 3',
+  'u-fp-demo': 'Noura Al Mansoori - Focal Point 4',
+}
+
+const demoUserNames: Record<string, Partial<User>> = {
+  'u-pa-1': { name: 'Hussain Mohammed', email: 'hussain.mohammed@govdigital.local' },
 }
 
 function normalizeDemoData(data: AppData): AppData {
   return {
     ...data,
-    users: data.users.map((user) => demoFocalPointNames[user.id] ? { ...user, name: demoFocalPointNames[user.id] } : user),
+    users: data.users.map((user) => ({
+      ...user,
+      ...demoUserNames[user.id],
+      ...(demoFocalPointNames[user.id] ? { name: demoFocalPointNames[user.id] } : {}),
+    })),
+  }
+}
+
+function mergeById<T extends { id: string }>(current: T[], seeded: T[]) {
+  const currentIds = new Set(current.map((item) => item.id))
+  return [...current, ...seeded.filter((item) => !currentIds.has(item.id))]
+}
+
+const demoFocalPointId = 'u-fp-demo'
+const demoFocalPointKpiIds = new Set(['kpi-037', 'kpi-038', 'kpi-039', 'kpi-040'])
+
+function resetDemoFocalPointSubmissions(submissions: KpiSubmission[]) {
+  const seedDemoSubmissions = seedData.submissions.filter((submission) => submission.focalPointId === demoFocalPointId)
+  return [
+    ...submissions.filter((submission) => submission.focalPointId !== demoFocalPointId && !demoFocalPointKpiIds.has(submission.kpiId)),
+    ...seedDemoSubmissions,
+  ]
+}
+
+function mergeSeedData(data: AppData): AppData {
+  const normalized = normalizeDemoData(data)
+  const teams = mergeById(normalized.teams, seedData.teams).map((team) => {
+    const seeded = seedData.teams.find((item) => item.id === team.id)
+    if (!seeded) return team
+    return {
+      ...team,
+      focalPointIds: Array.from(new Set([...team.focalPointIds, ...seeded.focalPointIds])),
+    }
+  })
+  const templates = mergeById(normalized.templates, seedData.templates).map((template) => {
+    const seeded = seedData.templates.find((item) => item.id === template.id)
+    if (!seeded) return template
+    return {
+      ...template,
+      kpiIds: Array.from(new Set([...template.kpiIds, ...seeded.kpiIds])),
+    }
+  })
+
+  return {
+    ...normalized,
+    sectors: mergeById(normalized.sectors, seedData.sectors),
+    departments: mergeById(normalized.departments, seedData.departments),
+    teams,
+    users: mergeById(normalized.users, seedData.users),
+    kpis: mergeById(normalized.kpis, seedData.kpis),
+    templates,
+    cycles: mergeById(normalized.cycles, seedData.cycles),
+    submissions: resetDemoFocalPointSubmissions(mergeById(normalized.submissions, seedData.submissions)),
+    changeRequests: mergeById(normalized.changeRequests, seedData.changeRequests),
   }
 }
 
@@ -109,10 +167,10 @@ export const useAppStore = create<AppStore>()(
     }),
     {
       name: 'kpi-app-state',
-      version: 10,
+      version: 13,
       migrate: (persistedState) => {
         const persisted = persistedState as Partial<AppStore> | undefined
-        const persistedData = persisted?.data ? normalizeDemoData(persisted.data) : seedData
+        const persistedData = persisted?.data ? mergeSeedData(persisted.data) : seedData
         const activeUserId = seedData.users.some((user) => user.id === persisted?.activeUserId) ? persisted?.activeUserId : 'u-admin'
         const activeCycleId = seedData.cycles.some((cycle) => cycle.id === persisted?.activeCycleId) ? persisted?.activeCycleId : 'cycle-q2-2026'
         return {

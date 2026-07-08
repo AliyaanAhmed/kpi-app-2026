@@ -28,7 +28,7 @@ const navItems: { label: string; path: string; icon: React.ComponentType<{ class
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'focal_point', 'performance_team', 'department_director', 'executive_director', 'director_general'] },
   { label: 'KPIs', path: '/kpis', icon: Target, roles: ['admin', 'focal_point', 'performance_team', 'department_director', 'executive_director', 'director_general'] },
   { label: 'Change Requests', path: '/change-requests', icon: FilePenLine, roles: ['focal_point', 'performance_team'] },
-  { label: 'Review Queue', path: '/approval/validate', icon: ListChecks, roles: ['performance_team'] },
+  { label: 'Validation Queue', path: '/approval/validate', icon: ListChecks, roles: ['performance_team'] },
   { label: 'Approval Queue', path: '/approval/queue', icon: ShieldCheck, roles: ['department_director'] },
   { label: 'Trackers', path: '/trackers/departments', icon: BarChart3, roles: ['performance_team'] },
   { label: 'Reports', path: '/reports', icon: BarChart3, roles: ['admin', 'performance_team', 'department_director', 'executive_director', 'director_general'] },
@@ -45,6 +45,7 @@ const demoRoleUserIds = [
   'u-fp-data',
   'u-fp-cloud',
   'u-fp-shared',
+  'u-fp-demo',
   'u-pa-1',
   'u-dir-data',
   'u-dir-cloud',
@@ -85,10 +86,17 @@ export function AppShell() {
     }
   }, [activeCycleId, user.id, user.role, user.departmentId])
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    const resetScroll = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+    }
+    resetScroll()
+    const frame = window.requestAnimationFrame(resetScroll)
     setRoleMenuOpen(false)
     setCycleMenuOpen(false)
-  }, [location.pathname])
+    return () => window.cancelAnimationFrame(frame)
+  }, [location.key, location.pathname, location.search, location.hash])
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
       const target = event.target as Node
@@ -153,7 +161,7 @@ export function AppShell() {
           ))}
         </nav>
 
-        <div className="mt-auto rounded-2xl border border-border bg-surface-raised p-3 text-text">
+        <div className="mb-4 mt-auto rounded-2xl border border-border bg-surface-raised p-3 text-text">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
               {user.name.split(' ').map((part) => part[0]).slice(0, 2).join('')}

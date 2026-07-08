@@ -1,14 +1,27 @@
 import { motion } from 'framer-motion'
-import { BarChart3, Building2, Filter, Sparkles, Users } from 'lucide-react'
+import { Building2, ChevronDown, Filter, Sparkles, Users } from 'lucide-react'
 import { useMemo, useState, type ComponentType } from 'react'
+import { Link } from 'react-router-dom'
 import { AppSelect } from '../components/ui/AppSelect'
 import { mockApi } from '../mockApi/mockApi'
 import { useAppStore } from '../store/appStore'
+import type { KpiSubmission } from '../domain/types'
 
 type TrackerView = 'focal_point' | 'department'
 
 function progressPercent(done: number, total: number) {
   return Math.round((done / Math.max(1, total)) * 100)
+}
+
+function kpiCode(id: string) {
+  return id.replace(/^kpi-/i, '').padStart(3, '0')
+}
+
+function aiReviewScore(submission: KpiSubmission) {
+  const answered = submission.answers.filter((answer) => answer.answer.trim().length >= 24).length
+  const evidenceBonus = Math.min(18, submission.attachments.length * 9)
+  const scoreBonus = submission.actualScore === undefined ? 0 : Math.min(18, Math.round((submission.actualScore / Math.max(1, submission.targetScore)) * 14))
+  return Math.min(96, 42 + answered * 8 + evidenceBonus + scoreBonus)
 }
 
 function isSubmitted(status: string) {
@@ -27,10 +40,17 @@ function isClarification(status: string) {
   return ['clarification_focal', 'clarification_director', 'clarification_from_performance', 'clarification_from_director'].includes(status)
 }
 
-function ProgressBar({ value, tone = 'bg-primary' }: { value: number; tone?: string }) {
+function ProgressBar({ value, tone = 'bg-primary', showLabel = true }: { value: number; tone?: string; showLabel?: boolean }) {
   return (
-    <div className="h-2 overflow-hidden rounded-full bg-primary-tint">
-      <motion.div className={`h-full rounded-full ${tone}`} initial={{ width: 0 }} animate={{ width: `${value}%` }} transition={{ duration: 0.45 }} />
+    <div>
+      {showLabel ? (
+        <div className="mb-1 flex justify-end">
+          <span className="font-mono text-[11px] font-extrabold text-primary">{value}%</span>
+        </div>
+      ) : null}
+      <div className="h-2 overflow-hidden rounded-full bg-primary-tint">
+        <motion.div className={`h-full rounded-full ${tone}`} initial={{ width: 0 }} animate={{ width: `${value}%` }} transition={{ duration: 0.45 }} />
+      </div>
     </div>
   )
 }
@@ -38,16 +58,12 @@ function ProgressBar({ value, tone = 'bg-primary' }: { value: number; tone?: str
 function SummaryCard({
   title,
   icon: Icon,
-  total,
-  primary,
-  secondary,
+  metrics,
   progress,
 }: {
   title: string
   icon: ComponentType<{ className?: string }>
-  total: { label: string; value: number }
-  primary: { label: string; value: number }
-  secondary: { label: string; value: number }
+  metrics: { label: string; value: number; tone?: string }[]
   progress: number
 }) {
   return (
@@ -61,10 +77,10 @@ function SummaryCard({
           <Icon className="h-5 w-5" />
         </div>
       </div>
-      <div className="mt-5 grid grid-cols-3 gap-4">
-        {[total, primary, secondary].map((metric) => (
+      <div className="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {metrics.map((metric) => (
           <div key={metric.label}>
-            <p className="font-display text-3xl font-extrabold leading-none text-text">{metric.value}</p>
+            <p className={`font-display text-3xl font-extrabold leading-none ${metric.tone ?? 'text-text'}`}>{metric.value}</p>
             <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.08em] text-muted">{metric.label}</p>
           </div>
         ))}
@@ -74,7 +90,7 @@ function SummaryCard({
           <span>Progress</span>
           <span>{progress}%</span>
         </div>
-        <ProgressBar value={progress} />
+        <ProgressBar value={progress} showLabel={false} />
       </div>
     </article>
   )
@@ -84,6 +100,7 @@ export function TrackersPage() {
   const { activeCycleId } = useAppStore()
   const [view, setView] = useState<TrackerView>('focal_point')
   const [sectorFilter, setSectorFilter] = useState('all')
+  const [aiOpen, setAiOpen] = useState(true)
   const user = mockApi.getCurrentUser()
   const departments = mockApi.getDepartments()
   const sectors = mockApi.getSectors()
@@ -113,7 +130,7 @@ export function TrackersPage() {
       const validated = focalSubmissions.filter((submission) => isValidated(submission.status)).length
       const directorReviewed = focalSubmissions.filter((submission) => isDirectorReviewed(submission.status)).length
       const returned = focalSubmissions.filter((submission) => isClarification(submission.status)).length
-      const stage = directorReviewed > 0 ? 'Director Review' : validated > 0 ? 'Performance Team Validation' : 'Entry'
+      const stage = directorReviewed > 0 ? 'Director Review' : validated > 0 ? 'Performance Validation' : 'Entry'
       return {
         id,
         name: users.find((item) => item.id === id)?.name ?? 'Focal Point',
@@ -160,6 +177,38 @@ export function TrackersPage() {
   const submittedFocalPoints = focalRows.filter((row) => row.submitted > 0).length
   const validatedFocalPoints = focalRows.filter((row) => row.validated > 0).length
   const summary = `${submittedFocalPoints} focal points have submitted, ${validatedFocalPoints} are validated by the Performance Team and are now pending with Director.`
+  const trackerAiCards = [
+    {
+      label: 'KPIs with insufficient evidence',
+      description: 'Evidence is missing or not enough for tracker-level validation.',
+      submissions: submissions.filter((submission) => submission.attachments.length === 0),
+    },
+    {
+      label: 'KPIs where evidence may not match entered actual value',
+      description: 'Actual value looks strong, but supporting evidence is missing or weak.',
+      submissions: submissions.filter((submission) => submission.actualScore !== undefined && submission.actualScore >= submission.targetScore && submission.attachments.length === 0),
+    },
+    {
+      label: 'KPIs where analysis is weak, missing, or unclear',
+      description: 'Analysis needs clearer interpretation before validation movement.',
+      submissions: submissions.filter((submission) => (submission.answers[0]?.answer.trim().length ?? 0) < 80),
+    },
+    {
+      label: 'KPIs where challenges are missing or not specific',
+      description: 'Challenge narrative should explain blockers and ownership.',
+      submissions: submissions.filter((submission) => (submission.answers[1]?.answer.trim().length ?? 0) < 80),
+    },
+    {
+      label: 'KPIs where recommendations are missing or generic',
+      description: 'Recommendations should include specific corrective action.',
+      submissions: submissions.filter((submission) => (submission.answers[2]?.answer.trim().length ?? 0) < 80),
+    },
+    {
+      label: 'KPIs that may need better wording before validation',
+      description: 'AI quality score indicates wording or evidence alignment can improve.',
+      submissions: submissions.filter((submission) => aiReviewScore(submission) < 70),
+    },
+  ]
   const departmentSubmissionTotal = departmentRows.length
   const departmentSubmissionCompleted = departmentRows.filter((row) => row.submitted === row.total && row.total > 0).length
   const departmentReviewTotal = departmentRows.length
@@ -187,41 +236,78 @@ export function TrackersPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-3">
+      <section className="grid gap-4 xl:grid-cols-2">
         <SummaryCard
-          title="Departments / Submission"
+          title="Departments"
           icon={Building2}
-          total={{ label: 'Total', value: departmentSubmissionTotal }}
-          primary={{ label: 'Completed', value: departmentSubmissionCompleted }}
-          secondary={{ label: 'Pending', value: Math.max(0, departmentSubmissionTotal - departmentSubmissionCompleted) }}
-          progress={progressPercent(departmentSubmissionCompleted, departmentSubmissionTotal)}
-        />
-        <SummaryCard
-          title="Departments / Review"
-          icon={BarChart3}
-          total={{ label: 'Total', value: departmentReviewTotal }}
-          primary={{ label: 'Reviewed', value: departmentReviewed }}
-          secondary={{ label: 'Pending', value: Math.max(0, departmentReviewTotal - departmentReviewed) }}
+          metrics={[
+            { label: 'Total', value: departmentSubmissionTotal },
+            { label: 'Submitted', value: departmentSubmissionCompleted, tone: 'text-success' },
+            { label: 'Pending Submission', value: Math.max(0, departmentSubmissionTotal - departmentSubmissionCompleted), tone: 'text-warning' },
+            { label: 'Reviewed', value: departmentReviewed, tone: 'text-primary' },
+          ]}
           progress={progressPercent(departmentReviewed, departmentReviewTotal)}
         />
         <SummaryCard
-          title="Focal Points / Submissions"
+          title="Focal Points"
           icon={Users}
-          total={{ label: 'Total', value: focalRows.length }}
-          primary={{ label: 'Submitted', value: focalSubmitted }}
-          secondary={{ label: 'Pending', value: Math.max(0, focalRows.length - focalSubmitted) }}
-          progress={progressPercent(focalSubmitted, focalRows.length)}
+          metrics={[
+            { label: 'Total', value: focalRows.length },
+            { label: 'Submitted', value: focalSubmitted, tone: 'text-success' },
+            { label: 'Pending Submission', value: Math.max(0, focalRows.length - focalSubmitted), tone: 'text-warning' },
+            { label: 'Reviewed', value: validatedFocalPoints, tone: 'text-primary' },
+          ]}
+          progress={progressPercent(validatedFocalPoints, focalRows.length)}
         />
       </section>
 
-      <section className="ai-panel">
-        <div className="flex items-start gap-3">
-          <div className="ai-icon h-11 w-11"><Sparkles className="h-5 w-5" /></div>
-          <div>
-            <h3 className="ai-heading text-xl font-extrabold">AI Summary</h3>
-            <p className="mt-2 text-sm font-semibold text-text">{summary}</p>
+      <section className="mt-5 overflow-hidden rounded-[28px] border border-[var(--ai-border)] bg-surface shadow-soft">
+        <button className="flex w-full items-start justify-between gap-4 bg-[linear-gradient(0deg,var(--ai-soft),var(--surface))] px-5 py-4 text-left transition hover:bg-[var(--ai-soft)]" onClick={() => setAiOpen((current) => !current)} type="button">
+          <div className="flex min-w-0 items-start gap-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--ai)] text-white shadow-[0_12px_24px_rgba(168,85,247,0.20)]">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-base font-extrabold text-text">AI Tracker Summary</h3>
+              <p className="mt-1 text-sm leading-6 text-muted">
+                {summary} AI-supported quality checks highlight evidence gaps, value mismatches, weak narratives, and wording risks across tracker records.
+              </p>
+            </div>
           </div>
-        </div>
+          <ChevronDown className={`mt-1 h-4 w-4 shrink-0 text-[var(--ai-strong)] transition-transform ${aiOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {aiOpen ? (
+          <motion.div className="border-t border-[var(--ai-border)] px-5 pb-5 pt-4" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }}>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {trackerAiCards.map((card) => {
+                const visibleIds = card.submissions.slice(0, 6)
+                const extraCount = Math.max(0, card.submissions.length - visibleIds.length)
+                return (
+                  <article className="rounded-2xl border border-[var(--ai-border)] bg-white/75 p-3 shadow-soft transition hover:-translate-y-0.5 hover:border-[var(--ai)] dark:bg-white/5" key={card.label}>
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="line-clamp-2 text-sm font-extrabold leading-5 text-text">{card.label}</p>
+                      <span className="rounded-full bg-[var(--ai-soft)] px-2.5 py-1 font-mono text-sm font-extrabold text-[var(--ai-strong)]">{card.submissions.length}</span>
+                    </div>
+                    <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-muted">{card.description}</p>
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {visibleIds.map((submission) => (
+                        <Link className="rounded-full border border-[var(--ai-border)] bg-white px-2 py-1 font-mono text-[11px] font-extrabold text-[var(--ai-strong)] transition hover:bg-[var(--ai)] hover:text-white dark:bg-white/5" key={submission.id} to={`/kpis/${submission.kpiId}`}>
+                          {kpiCode(submission.kpiId)}
+                        </Link>
+                      ))}
+                      {extraCount ? (
+                        <span className="rounded-full border border-[var(--ai-border)] bg-[var(--ai-soft)] px-2 py-1 font-mono text-[11px] font-extrabold text-[var(--ai-strong)]">+{extraCount}</span>
+                      ) : null}
+                      {!card.submissions.length ? (
+                        <span className="rounded-full border border-[var(--ai-border)] bg-white px-2 py-1 text-[11px] font-extrabold text-muted dark:bg-white/5">No KPIs</span>
+                      ) : null}
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          </motion.div>
+        ) : null}
       </section>
 
       <section className="flex flex-col gap-3 rounded-[24px] border border-border bg-surface p-4 shadow-soft lg:flex-row lg:items-center lg:justify-between">
@@ -260,7 +346,7 @@ export function TrackersPage() {
                 <div className="rounded-2xl border border-border bg-surface-raised p-4">
                   <div className="mb-2 flex justify-between text-sm font-bold">
                     <span>Focal Point Submission</span>
-                    <span>{row.total} KPIs / {row.submitted} Submitted / {Math.max(0, row.total - row.submitted)} Pending</span>
+                    <span>{row.total} KPIs - {row.submitted} Submitted, {Math.max(0, row.total - row.submitted)} Pending</span>
                   </div>
                   <ProgressBar value={progressPercent(row.submitted, row.total)} />
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -271,8 +357,8 @@ export function TrackersPage() {
 
                 <div className="grid gap-3 md:grid-cols-3">
                   <div className="rounded-2xl border border-border bg-surface-raised p-4">
-                    <p className="text-sm font-bold">Performance Review</p>
-                    <p className="mt-2 text-xs text-muted">{row.total} KPIs / {row.validated} Validated / {Math.max(0, row.total - row.validated)} Pending</p>
+                    <p className="text-sm font-bold">Performance Validation</p>
+                    <p className="mt-2 text-xs text-muted">{row.total} KPIs - {row.validated} Validated, {Math.max(0, row.total - row.validated)} Pending</p>
                     <div className="mt-3"><ProgressBar value={progressPercent(row.validated, row.total)} tone="bg-success" /></div>
                   </div>
                   <div className="rounded-2xl border border-border bg-surface-raised p-4">
@@ -336,27 +422,27 @@ export function TrackersPage() {
           {focalRows.map((row, index) => (
             <motion.article className="card p-5" key={row.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.035 }}>
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <h3 className="text-xl font-extrabold">{row.name}</h3>
+                <div className="min-w-0 flex-1">
+                  <h3 className="truncate text-xl font-extrabold">{row.name}</h3>
                   <p className="mt-1 text-sm text-muted">{row.departmentNames.join(', ') || 'Departments'}</p>
                 </div>
-                <span className="rounded-full border border-primary/20 bg-primary-tint px-3 py-1 text-xs font-extrabold text-primary">Stage: {row.stage}</span>
+                <span className="shrink-0 whitespace-nowrap rounded-full border border-primary/20 bg-primary-tint px-3 py-1 text-xs font-extrabold text-primary">Stage: {row.stage}</span>
               </div>
               <div className="mt-5 grid gap-4">
                 <div className="rounded-2xl border border-border bg-surface-raised p-4">
-                  <div className="mb-2 flex justify-between text-sm font-bold"><span>Submissions</span><span>{row.total} KPIs / {row.completed} Completed / {Math.max(0, row.total - row.completed)} Remaining</span></div>
+                  <div className="mb-2 flex justify-between gap-3 text-sm font-bold"><span>Submissions</span><span>{row.total} KPIs - {row.completed} Completed, {Math.max(0, row.total - row.completed)} Pending</span></div>
                   <ProgressBar value={progressPercent(row.completed, row.total)} />
                   <p className="mt-2 text-xs font-bold text-muted">Status: {row.completed === row.total && row.total > 0 ? 'Submitted' : 'Pending'}</p>
                 </div>
                 <div className="grid gap-3 md:grid-cols-3">
                   <div className="rounded-2xl border border-border bg-surface-raised p-4">
-                    <p className="text-sm font-bold">Performance Review</p>
-                    <p className="mt-2 text-xs text-muted">{row.total} KPIs / {row.validated} Validated / {Math.max(0, row.total - row.validated)} Pending</p>
+                    <p className="text-sm font-bold">Performance Validation</p>
+                    <p className="mt-2 text-xs text-muted">{row.total} KPIs - {row.validated} Validated, {Math.max(0, row.total - row.validated)} Pending</p>
                     <div className="mt-3"><ProgressBar value={progressPercent(row.validated, row.total)} tone="bg-success" /></div>
                   </div>
                   <div className="rounded-2xl border border-border bg-surface-raised p-4">
                     <p className="text-sm font-bold">Director Review</p>
-                    <p className="mt-2 text-xs text-muted">{row.total} KPIs / {row.directorReviewed} Reviewed</p>
+                    <p className="mt-2 text-xs text-muted">{row.total} KPIs - {row.directorReviewed} Reviewed</p>
                     <div className="mt-3"><ProgressBar value={progressPercent(row.directorReviewed, row.total)} tone="bg-info" /></div>
                   </div>
                   <div className="rounded-2xl border border-warning/20 bg-warning/10 p-4">
