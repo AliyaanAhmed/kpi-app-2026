@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, CheckCircle2, FileText, History, MessageSquare, Save, Send, ShieldCheck, Sparkles, Target, WandSparkles } from 'lucide-react'
+import { ArrowLeft, Check, CheckCircle2, ChevronDown, FileText, History, MessageSquare, Save, Send, ShieldCheck, Sparkles, Target, WandSparkles } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { Modal } from '../components/ui/Modal'
@@ -6,6 +6,10 @@ import { StatusPill } from '../components/ui/StatusPill'
 import { useToast } from '../context/ToastContext'
 import { mockApi } from '../mockApi/mockApi'
 import { useAppStore } from '../store/appStore'
+
+function displayKpiId(id: string) {
+  return id.replace(/^kpi-/i, '').toUpperCase()
+}
 
 function WorkflowCommentCard({ title, author, comment }: { title: string; author: string; comment?: string }) {
   return (
@@ -27,6 +31,75 @@ function WorkflowCommentCard({ title, author, comment }: { title: string; author
         </div>
       </div>
     </div>
+  )
+}
+
+function KpiAiSummaryPanel({
+  kpiId,
+  aiScore,
+  rows,
+  linkTo,
+}: {
+  kpiId: string
+  aiScore: number
+  rows: { title: string; description: string; flagged: boolean }[]
+  linkTo: string
+}) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <section className="overflow-hidden rounded-[28px] border border-[var(--ai-border)] bg-surface shadow-soft">
+      <button
+        className="flex w-full items-start justify-between gap-4 bg-[linear-gradient(0deg,var(--ai-soft),var(--surface))] px-5 py-4 text-left transition hover:bg-[var(--ai-soft)]"
+        onClick={() => setOpen((current) => !current)}
+        type="button"
+      >
+        <div className="flex min-w-0 items-start gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--ai)] text-white shadow-[0_12px_24px_rgba(168,85,247,0.20)]">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-base font-extrabold text-text">AI KPI Summary</h3>
+              <span className="rounded-full bg-white/70 px-2.5 py-1 font-mono text-[11px] font-extrabold text-[var(--ai-strong)] dark:bg-white/10">
+                Score {aiScore}
+              </span>
+            </div>
+            <p className="mt-1 text-sm leading-6 text-muted">
+              AI-supported quality checks highlight evidence gaps, value mismatches, weak narratives, and wording risks for this KPI.
+            </p>
+          </div>
+        </div>
+        <ChevronDown className={`mt-1 h-4 w-4 shrink-0 text-[var(--ai-strong)] transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open ? (
+        <div className="border-t border-[var(--ai-border)] px-5 pb-5 pt-4">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {rows.map((row) => (
+              <article className="rounded-2xl border border-[var(--ai-border)] bg-white/75 p-3 shadow-soft transition hover:-translate-y-0.5 hover:border-[var(--ai)] dark:bg-white/5" key={row.title}>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="line-clamp-2 text-sm font-extrabold leading-5 text-text">{row.title}</p>
+                  <span className="rounded-full bg-[var(--ai-soft)] px-2.5 py-1 font-mono text-sm font-extrabold text-[var(--ai-strong)]">{row.flagged ? 1 : 0}</span>
+                </div>
+                <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-muted">{row.description}</p>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {row.flagged ? (
+                    <Link
+                      className="rounded-full border border-[var(--ai-border)] bg-white px-2 py-1 font-mono text-[11px] font-extrabold text-[var(--ai-strong)] transition hover:bg-[var(--ai)] hover:text-white dark:bg-white/5"
+                      to={linkTo}
+                    >
+                      {displayKpiId(kpiId)}
+                    </Link>
+                  ) : (
+                    <span className="rounded-full bg-white/70 px-2 py-1 text-[11px] font-bold text-muted dark:bg-white/5">No KPI IDs</span>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </section>
   )
 }
 
@@ -77,6 +150,45 @@ export function KpiDetailPage() {
     (user.role === 'performance_team' && ['submitted_to_performance_team', 'with_performance_team'].includes(activeSubmission.status)) ||
     (user.role === 'department_director' && activeSubmission.status === 'submitted_to_director')
   )
+  const answerByLabel = (label: string) => {
+    const question = kpi.questions.find((item) => item.label.toLowerCase().includes(label))
+    return activeSubmission?.answers.find((answer) => answer.questionId === question?.id)?.answer.trim() ?? ''
+  }
+  const hasWeakText = (value: string) => value.length === 0 || value.length < 35
+  const hasEvidence = Boolean(activeSubmission?.attachments.length)
+  const evidenceMismatch = Boolean(activeSubmission?.actualScore !== undefined && activeSubmission.actualScore >= activeSubmission.targetScore && !hasEvidence)
+  const aiSummaryRows = [
+    {
+      title: 'KPIs with insufficient evidence',
+      description: 'Evidence is missing or not enough for KPI validation.',
+      flagged: !hasEvidence,
+    },
+    {
+      title: 'KPIs where evidence may not match entered actual value',
+      description: 'Actual value looks strong, but supporting evidence is missing or weak.',
+      flagged: evidenceMismatch,
+    },
+    {
+      title: 'KPIs where analysis is weak, missing, or unclear',
+      description: 'Analysis needs clearer interpretation before validation.',
+      flagged: hasWeakText(answerByLabel('analysis')),
+    },
+    {
+      title: 'KPIs where challenges are missing or not specific',
+      description: 'Challenge narrative should explain blockers and ownership.',
+      flagged: hasWeakText(answerByLabel('challenge')),
+    },
+    {
+      title: 'KPIs where recommendations are missing or generic',
+      description: 'Recommendations should include specific corrective action.',
+      flagged: hasWeakText(answerByLabel('recommendation')),
+    },
+    {
+      title: 'KPIs that may need better wording before validation',
+      description: 'AI quality score indicates the wording can be improved.',
+      flagged: aiScore < 70,
+    },
+  ]
 
   function handlePerformanceCommentSave() {
     if (!activeSubmission) return
@@ -156,6 +268,12 @@ export function KpiDetailPage() {
           </div>
         </div>
       </section>
+      <KpiAiSummaryPanel
+        aiScore={aiScore}
+        kpiId={kpi.id}
+        linkTo={user.role === 'focal_point' ? `/kpis/${kpi.id}/fill` : `/kpis/${kpi.id}`}
+        rows={aiSummaryRows}
+      />
       <section className="flex flex-wrap items-start gap-3 rounded-2xl border border-[#F5D0A9] bg-[#FFF7ED] px-4 py-3 shadow-sm dark:border-[#EA580C]/30 dark:bg-[#431407]/40">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#F97316] text-white">
           <History className="h-4 w-4" />
@@ -276,27 +394,13 @@ export function KpiDetailPage() {
         </article>
         </div>
         <aside className="space-y-5">
-          <article className="ai-panel">
-            <div className="flex items-center gap-3">
-              <div className="ai-icon h-11 w-11"><WandSparkles className="h-5 w-5" /></div>
-              <div><h3 className="ai-heading text-lg font-extrabold">Suggested Fields</h3><p className="text-sm text-muted">Read-only AI suggestions for this KPI.</p></div>
-            </div>
-            <div className="mt-4 space-y-3">
-              {kpi.questions.slice(0, 3).map((question) => (
-                <div className="ai-surface" key={question.id}>
-                  <p className="text-xs font-bold text-muted">{question.label}</p>
-                  <p className="mt-2 line-clamp-3 text-xs leading-5">{suggestedAnswers[question.id]}</p>
-                </div>
-              ))}
-            </div>
-          </article>
           {user.role === 'performance_team' && activeSubmission ? (
             <article className="card p-5">
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-tint text-primary">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-tint text-primary">
                   <MessageSquare className="h-4 w-4" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h3 className="text-lg font-extrabold">Performance Team Actions</h3>
                   <p className="mt-1 text-sm text-muted">Save the comment, or review the KPI directly when validation is complete.</p>
                 </div>
@@ -328,10 +432,10 @@ export function KpiDetailPage() {
           {user.role === 'department_director' && activeSubmission ? (
             <article className="card p-5">
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-tint text-primary">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-tint text-primary">
                   <ShieldCheck className="h-4 w-4" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h3 className="text-lg font-extrabold">Director Actions</h3>
                   <p className="mt-1 text-sm text-muted">Review, clarify, and approve the KPI.</p>
                 </div>
@@ -347,6 +451,20 @@ export function KpiDetailPage() {
               </div>
             </article>
           ) : null}
+          <article className="ai-panel">
+            <div className="flex items-center gap-3">
+              <div className="ai-icon h-11 w-11 shrink-0"><WandSparkles className="h-5 w-5" /></div>
+              <div className="min-w-0"><h3 className="ai-heading text-lg font-extrabold">Suggested Fields</h3><p className="text-sm text-muted">Read-only AI suggestions for this KPI.</p></div>
+            </div>
+            <div className="mt-4 space-y-3">
+              {kpi.questions.slice(0, 3).map((question) => (
+                <div className="ai-surface" key={question.id}>
+                  <p className="text-xs font-bold text-muted">{question.label}</p>
+                  <p className="mt-2 line-clamp-3 text-xs leading-5">{suggestedAnswers[question.id]}</p>
+                </div>
+              ))}
+            </div>
+          </article>
         </aside>
       </section>
       <Modal

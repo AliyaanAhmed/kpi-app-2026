@@ -34,7 +34,7 @@ const users = [
   { id: 'u-dir-experience', name: 'Digital Experience Director', email: 'experience.director@govdigital.local', role: 'department_director', departmentId: 'dep-experience', sectorId: 'sec-citizen', active: true },
   { id: 'u-dir-support', name: 'Citizen Support Director', email: 'support.director@govdigital.local', role: 'department_director', departmentId: 'dep-support', sectorId: 'sec-citizen', active: true },
   { id: 'u-dir-learning', name: 'Learning & Growth Director', email: 'learning.director@govdigital.local', role: 'department_director', departmentId: 'dep-learning', sectorId: 'sec-citizen', active: true },
-  { id: 'u-fp-data', name: 'Gaith - Focal Point 1', email: 'data.focal@govdigital.local', role: 'focal_point', departmentId: 'dep-data', departmentIds: ['dep-data', 'dep-cyber', 'dep-enterprise'], sectorId: 'sec-digital', active: true },
+  { id: 'u-fp-data', name: 'Ghaith - Focal Point 1', email: 'data.focal@govdigital.local', role: 'focal_point', departmentId: 'dep-data', departmentIds: ['dep-data', 'dep-cyber', 'dep-enterprise'], sectorId: 'sec-digital', active: true },
   { id: 'u-fp-cloud', name: 'Ihab - Focal Point 2', email: 'cloud.focal@govdigital.local', role: 'focal_point', departmentId: 'dep-cloud', departmentIds: ['dep-cloud', 'dep-finance', 'dep-experience'], sectorId: 'sec-digital', active: true },
   { id: 'u-fp-shared', name: 'Ali Solomoni - Focal Point 3', email: 'shared.focal@govdigital.local', role: 'focal_point', departmentId: 'dep-data', departmentIds: ['dep-data', 'dep-cloud', 'dep-procurement', 'dep-support', 'dep-learning'], sectorId: 'sec-digital', active: true },
   { id: 'u-fp-demo', name: 'Noura Al Mansoori - Focal Point 4', email: 'noura.focal@govdigital.local', role: 'focal_point', departmentId: 'dep-data', departmentIds: ['dep-data'], sectorId: 'sec-digital', active: true },
@@ -122,19 +122,6 @@ const cycles = [
   },
 ] satisfies AppData['cycles']
 
-const statusMix: SubmissionStatus[] = [
-  'published',
-  'approved_by_director',
-  'reviewed_by_director',
-  'submitted_to_director',
-  'reviewed_by_performance_team',
-  'submitted_to_performance_team',
-  'draft',
-  'clarification_from_performance',
-  'clarification_from_director',
-  'active',
-]
-
 const actualScoreMix = [
   118,
   104,
@@ -156,12 +143,19 @@ const actualScoreMix = [
   79,
 ]
 
+const focalPointWorkflowStage: Record<string, SubmissionStatus> = {
+  'u-fp-data': 'submitted_to_performance_team',
+  'u-fp-cloud': 'submitted_to_director',
+  'u-fp-shared': 'approved_by_director',
+}
+
 const demoAssignments: { kpiId: string; focalPointId: string; status: SubmissionStatus; actualScore?: number }[] = baseKpis.map((kpi, index) => {
   const team = teams.find((item) => item.departmentId === kpi.departmentId)!
+  const focalPointId = team.focalPointIds[index % team.focalPointIds.length]
   return {
     kpiId: kpi.id,
-    focalPointId: team.focalPointIds[index % team.focalPointIds.length],
-    status: statusMix[index % statusMix.length],
+    focalPointId,
+    status: focalPointWorkflowStage[focalPointId] ?? 'active',
     actualScore: actualScoreMix[index % actualScoreMix.length],
   }
 })
@@ -171,8 +165,17 @@ const submissions: KpiSubmission[] = demoAssignments.map(({ kpiId, focalPointId,
   const team = teams.find((item) => item.departmentId === kpi.departmentId)!
   const cycle = cycles.find((item) => item.id === 'cycle-q2-2026')!
   const isEntered = status !== 'active' && actualScore !== undefined
+  const isSubmittedToPerformance = status === 'submitted_to_performance_team'
   const isPerformanceReviewed = ['reviewed_by_performance_team', 'submitted_to_director', 'reviewed_by_director', 'approved_by_director', 'published'].includes(status)
   const isDirectorReviewed = ['reviewed_by_director', 'approved_by_director', 'published'].includes(status)
+  const stageNote =
+    status === 'submitted_to_performance_team'
+      ? 'Bulk submitted by Focal Point and waiting for Performance Team validation.'
+      : status === 'submitted_to_director'
+        ? 'Bulk reviewed by Performance Team and submitted to Department Director.'
+        : status === 'approved_by_director'
+          ? 'Bulk approved by Department Director and ready for Performance Team publishing.'
+          : `Seeded workflow state: ${status.replaceAll('_', ' ')}.`
   return {
     id: `sub-cycle-q2-2026-${kpiId}`,
     kpiId,
@@ -185,17 +188,13 @@ const submissions: KpiSubmission[] = demoAssignments.map(({ kpiId, focalPointId,
       questionId: question.id,
       answer: isEntered ? `${question.label} narrative for ${kpi.name} with measurable evidence and department context.` : '',
     })),
-    attachments: isEntered && index % 5 !== 0 ? [{ id: `att-${kpiId}`, fileName: `${kpi.name}.pdf`, url: '#' }] : [],
+    attachments: isEntered && (!isSubmittedToPerformance || index % 4 !== 0) ? [{ id: `att-${kpiId}`, fileName: `${kpi.name}.pdf`, url: '#' }] : [],
     performanceTeamComment: isPerformanceReviewed
       ? `Performance Team reviewed ${kpi.name} and confirmed evidence readiness for director handoff.`
       : status === 'clarification_from_performance'
         ? `Performance Team requested stronger evidence and clearer analysis for ${kpi.name}.`
         : undefined,
-    directorComment: isDirectorReviewed
-      ? `Director reviewed ${kpi.name} and confirmed department-level acceptance.`
-      : status === 'clarification_from_director'
-        ? `Director requested focal point clarification on ${kpi.name} before approval.`
-        : undefined,
+    directorComment: undefined,
     status,
     history: [
       {
@@ -204,11 +203,47 @@ const submissions: KpiSubmission[] = demoAssignments.map(({ kpiId, focalPointId,
         actorRole: 'focal_point',
         fromStatus: 'active',
         toStatus: status,
-        note: status === 'draft'
-            ? 'Draft saved for the active cycle.'
-            : `Seeded workflow state: ${status.replaceAll('_', ' ')}.`,
+        note: stageNote,
         timestamp: `2026-06-${String(10 + (index % 15)).padStart(2, '0')}T09:30:00.000Z`,
       },
+      ...(isPerformanceReviewed ? [{
+        id: `hist-${kpiId}-performance-reviewed`,
+        actorId: 'u-pa-1',
+        actorRole: 'performance_team' as const,
+        fromStatus: 'submitted_to_performance_team' as const,
+        toStatus: 'reviewed_by_performance_team' as const,
+        note: 'Performance Team validated this KPI as part of the focal point submission.',
+        timestamp: `2026-06-${String(11 + (index % 15)).padStart(2, '0')}T11:30:00.000Z`,
+      }] : []),
+      ...(['submitted_to_director', 'reviewed_by_director', 'approved_by_director', 'published'].includes(status) ? [{
+        id: `hist-${kpiId}-submitted-director`,
+        actorId: 'u-pa-1',
+        actorRole: 'performance_team' as const,
+        fromStatus: 'reviewed_by_performance_team' as const,
+        toStatus: 'submitted_to_director' as const,
+        note: 'Focal point submission sent to Department Director.',
+        timestamp: `2026-06-${String(12 + (index % 15)).padStart(2, '0')}T12:30:00.000Z`,
+      }] : []),
+      ...(isDirectorReviewed ? [{
+        id: `hist-${kpiId}-director-reviewed`,
+        actorId: kpis.find((item) => item.id === kpiId)
+          ? departments.find((department) => department.id === kpi.departmentId)?.directorId ?? 'u-dir-data'
+          : 'u-dir-data',
+        actorRole: 'department_director' as const,
+        fromStatus: 'submitted_to_director' as const,
+        toStatus: 'reviewed_by_director' as const,
+        note: 'Department Director reviewed this KPI.',
+        timestamp: `2026-06-${String(13 + (index % 15)).padStart(2, '0')}T13:30:00.000Z`,
+      }] : []),
+      ...(status === 'approved_by_director' ? [{
+        id: `hist-${kpiId}-director-approved`,
+        actorId: departments.find((department) => department.id === kpi.departmentId)?.directorId ?? 'u-dir-data',
+        actorRole: 'department_director' as const,
+        fromStatus: 'reviewed_by_director' as const,
+        toStatus: 'approved_by_director' as const,
+        note: 'Department Director approved the focal point submission.',
+        timestamp: `2026-06-${String(14 + (index % 15)).padStart(2, '0')}T14:30:00.000Z`,
+      }] : []),
     ],
   }
 })

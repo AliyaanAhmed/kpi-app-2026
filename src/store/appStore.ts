@@ -4,7 +4,7 @@ import type { AppData, ChangeRequest, Cycle, Kpi, KpiSubmission, KpiTemplate, Ro
 import { seedData } from '../mockData/seed'
 
 const demoFocalPointNames: Record<string, string> = {
-  'u-fp-data': 'Gaith - Focal Point 1',
+  'u-fp-data': 'Ghaith - Focal Point 1',
   'u-fp-cloud': 'Ihab - Focal Point 2',
   'u-fp-shared': 'Ali Solomoni - Focal Point 3',
   'u-fp-demo': 'Noura Al Mansoori - Focal Point 4',
@@ -41,6 +41,14 @@ function resetDemoFocalPointSubmissions(submissions: KpiSubmission[]) {
   ]
 }
 
+function mergeSeedSubmissions(submissions: KpiSubmission[]) {
+  const seededIds = new Set(seedData.submissions.map((submission) => submission.id))
+  return [
+    ...submissions.filter((submission) => !seededIds.has(submission.id)),
+    ...seedData.submissions,
+  ]
+}
+
 function mergeSeedData(data: AppData): AppData {
   const normalized = normalizeDemoData(data)
   const teams = mergeById(normalized.teams, seedData.teams).map((team) => {
@@ -69,7 +77,7 @@ function mergeSeedData(data: AppData): AppData {
     kpis: mergeById(normalized.kpis, seedData.kpis),
     templates,
     cycles: mergeById(normalized.cycles, seedData.cycles),
-    submissions: resetDemoFocalPointSubmissions(mergeById(normalized.submissions, seedData.submissions)),
+    submissions: resetDemoFocalPointSubmissions(mergeSeedSubmissions(normalized.submissions)),
     changeRequests: mergeById(normalized.changeRequests, seedData.changeRequests),
   }
 }
@@ -167,7 +175,7 @@ export const useAppStore = create<AppStore>()(
     }),
     {
       name: 'kpi-app-state',
-      version: 13,
+      version: 14,
       migrate: (persistedState) => {
         const persisted = persistedState as Partial<AppStore> | undefined
         const persistedData = persisted?.data ? mergeSeedData(persisted.data) : seedData
