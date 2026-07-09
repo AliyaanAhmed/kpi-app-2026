@@ -107,8 +107,22 @@ function PerformanceValidationQueue() {
     showSuccessToast('Published', 'Approved focal point submission has been published.')
   }
 
-  function directorApprovalCommentFor(instance: FocalPointSubmissionInstance) {
-    return instance.submissions.find((submission) => submission.directorComment?.trim())?.directorComment?.trim() ?? ''
+  function directorApprovalCommentsFor(instance: FocalPointSubmissionInstance) {
+    const groupedComments = new Map<string, { departmentName: string; directorName: string; comments: string[] }>()
+    instance.submissions.forEach((submission) => {
+      const comment = submission.directorComment?.trim()
+      if (!comment) return
+      const kpi = mockApi.getKpi(submission.kpiId)
+      const department = kpi?.departmentId ? mockApi.getDepartment(kpi.departmentId) : undefined
+      const director = department?.directorId ? users.find((user) => user.id === department.directorId) : undefined
+      const departmentName = department?.name ?? 'Department'
+      const directorName = director?.name ?? 'Department Director'
+      const key = `${department?.id ?? departmentName}-${director?.id ?? directorName}`
+      const existing = groupedComments.get(key) ?? { departmentName, directorName, comments: [] }
+      if (!existing.comments.includes(comment)) existing.comments.push(comment)
+      groupedComments.set(key, existing)
+    })
+    return [...groupedComments.values()]
   }
 
   function confirmClarification() {
@@ -163,7 +177,7 @@ function PerformanceValidationQueue() {
     const focalPoint = users.find((user) => user.id === selectedInstance.focalPointId)
     const departmentNames = Array.from(new Set(selectedInstance.submissions.map((submission) => mockApi.getDepartment(mockApi.getKpi(submission.kpiId)?.departmentId ?? '')?.name).filter(Boolean)))
     const stats = instanceStats(selectedInstance)
-    const directorComment = directorApprovalCommentFor(selectedInstance)
+    const directorComments = directorApprovalCommentsFor(selectedInstance)
     const canSubmitDirector = selectedInstance.submissions.length > 0 && selectedInstance.submissions.every((submission) => submission.status === 'reviewed_by_performance_team')
     const canPublish = selectedInstance.submissions.length > 0 && selectedInstance.submissions.every((submission) => ['approved_by_director', 'director_approved'].includes(submission.status))
     const selectedSubmissions = selectedInstance.submissions.filter((submission) => selectedPerformanceSubmissionIds.includes(submission.id))
@@ -269,17 +283,26 @@ function PerformanceValidationQueue() {
               <button className="btn-primary h-10 text-xs" disabled={!canPublish} onClick={() => publishGroup(selectedInstance)} type="button"><ShieldCheck className="h-4 w-4" /> Publish</button>
             </div>
           </div>
-          {directorComment ? (
-            <div className="mt-5 rounded-2xl border border-primary/15 bg-primary-tint/60 px-4 py-3">
-              <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-white">
-                  <MessageSquare className="h-4 w-4" />
+          {directorComments.length ? (
+            <div className="mt-4 grid gap-2 lg:grid-cols-2 2xl:grid-cols-3">
+              {directorComments.map((item) => (
+                <div className="rounded-[18px] border border-primary/15 bg-primary-tint/60 px-3 py-2.5" key={`${item.departmentName}-${item.directorName}`}>
+                  <div className="flex items-start gap-2.5">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-white">
+                      <MessageSquare className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-extrabold text-text">{item.departmentName} Director Comment</p>
+                      <p className="mt-0.5 truncate text-[11px] font-bold text-muted">{item.directorName}</p>
+                      <div className="mt-1.5 space-y-1.5">
+                        {item.comments.map((comment) => (
+                          <p className="line-clamp-2 text-xs leading-5 text-text" key={comment}>{comment}</p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-extrabold text-text">Director Comment</p>
-                  <p className="mt-1 text-sm leading-6 text-text">{directorComment}</p>
-                </div>
-              </div>
+              ))}
             </div>
           ) : null}
           <div className="mt-5 w-full rounded-2xl border border-[var(--ai-border)] bg-[var(--ai-soft)] text-[var(--ai-strong)]">
@@ -529,7 +552,6 @@ function PerformanceValidationQueue() {
           const stats = instanceStats(instance)
           const canSubmitDirector = instance.submissions.length > 0 && instance.submissions.every((submission) => submission.status === 'reviewed_by_performance_team')
           const canPublish = instance.submissions.length > 0 && instance.submissions.every((submission) => ['approved_by_director', 'director_approved'].includes(submission.status))
-          const directorComment = directorApprovalCommentFor(instance)
           return (
             <motion.article className="group rounded-[24px] border border-border bg-surface p-5 shadow-soft transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-card" key={instance.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.035 }}>
               <button className="block w-full text-left" onClick={() => setSelectedInstanceId(instance.id)} type="button">
@@ -549,12 +571,6 @@ function PerformanceValidationQueue() {
                       <Sparkles className="mr-2 inline h-4 w-4" />
                       AI summary: {stats.weakEvidence} KPIs have weak evidence and {stats.evidenceMismatch} KPIs do not match with evidence uploaded.
                     </div>
-                    {directorComment ? (
-                      <div className="mt-3 rounded-2xl border border-primary/15 bg-primary-tint/60 px-3 py-2 text-sm text-text">
-                        <MessageSquare className="mr-2 inline h-4 w-4 text-primary" />
-                        <span className="font-extrabold">Director Comment:</span> {directorComment}
-                      </div>
-                    ) : null}
                     <p className="mt-2 text-sm font-bold text-text">
                       Validation: {instance.submissions.length} KPIs - {stats.reviewed} Completed, {stats.pendingValidation} Pending
                     </p>
@@ -859,20 +875,21 @@ function DirectorApprovalQueue() {
           </div>
         </motion.section>
 
-        <section className="card p-4">
-          <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex flex-wrap gap-2">
-              {directorGridStatusTabs.map((tab) => (
-                <button className={tabClass(directorGridStatusFilter === tab.id)} key={tab.id} onClick={() => setDirectorGridStatusFilter(tab.id)} type="button">
-                  {tab.label}<span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', directorGridStatusFilter === tab.id ? 'bg-white/20' : 'bg-surface-raised text-muted')}>{tab.count}</span>
-                </button>
-              ))}
-            </div>
-            <div className="grid gap-3 md:grid-cols-2 xl:w-[480px]">
-              <AppSelect value={directorGridDimensionFilter} onValueChange={setDirectorGridDimensionFilter} options={directorGridDimensionOptions} placeholder="Dimension" />
-              <AppSelect className="border-[var(--ai-border)] bg-[var(--ai-soft)] text-[var(--ai-strong)]" value={directorGridAiFilter} onValueChange={setDirectorGridAiFilter} options={directorGridAiOptions} placeholder="AI Filter" />
-            </div>
+        <section className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-wrap gap-2">
+            {directorGridStatusTabs.map((tab) => (
+              <button className={tabClass(directorGridStatusFilter === tab.id)} key={tab.id} onClick={() => setDirectorGridStatusFilter(tab.id)} type="button">
+                {tab.label}<span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', directorGridStatusFilter === tab.id ? 'bg-white/20' : 'bg-surface-raised text-muted')}>{tab.count}</span>
+              </button>
+            ))}
           </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:w-[480px]">
+            <AppSelect value={directorGridDimensionFilter} onValueChange={setDirectorGridDimensionFilter} options={directorGridDimensionOptions} placeholder="Dimension" />
+            <AppSelect className="border-[var(--ai-border)] bg-[var(--ai-soft)] text-[var(--ai-strong)]" value={directorGridAiFilter} onValueChange={setDirectorGridAiFilter} options={directorGridAiOptions} placeholder="AI Filter" />
+          </div>
+        </section>
+
+        <section className="rounded-[22px] border border-border bg-surface px-4 py-3 shadow-soft">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-sm font-extrabold text-text">{selectedSubmissions.length} selected</p>
