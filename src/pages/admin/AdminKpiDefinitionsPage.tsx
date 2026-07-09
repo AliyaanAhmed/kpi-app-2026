@@ -1,4 +1,4 @@
-import { Pencil, Plus, Target } from 'lucide-react'
+import { Check, Pencil, Plus, Sparkles, Target } from 'lucide-react'
 import { useState } from 'react'
 import { Modal } from '../../components/ui/Modal'
 import { AppSelect } from '../../components/ui/AppSelect'
@@ -18,6 +18,12 @@ const blankKpi: Kpi = {
     { id: 'challenges', label: 'Challenges' },
     { id: 'recommendations', label: 'Recommendations' },
   ],
+}
+
+const aiKpiSuggestion = {
+  name: 'Digital Service Adoption Index',
+  dimension: 'Digital Excellence',
+  unit: 'percentage' as Kpi['targetType'],
 }
 
 export function AdminKpiDefinitionsPage() {
@@ -69,6 +75,53 @@ export function AdminKpiDefinitionsPage() {
       >
         {editing ? (
           <div className="space-y-4">
+            <section className="overflow-hidden rounded-[22px] border border-[var(--ai-border)] bg-[var(--ai-soft)] p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="ai-icon h-10 w-10 shrink-0">
+                    <Sparkles className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-extrabold text-[var(--ai-strong)]">AI Suggested KPI Setup</p>
+                    <p className="mt-1 max-w-2xl text-xs font-semibold leading-5 text-muted">
+                      Suggested values are generated for demo mode. Apply each field individually, then adjust anything before saving.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-[var(--ai-border)] bg-white px-3 text-xs font-extrabold text-[var(--ai-strong)] transition hover:bg-[var(--ai)] hover:text-white dark:bg-white/5"
+                  onClick={() => setEditing({ ...editing, name: aiKpiSuggestion.name, category: aiKpiSuggestion.dimension, targetType: aiKpiSuggestion.unit })}
+                  type="button"
+                >
+                  <Check className="h-3.5 w-3.5" /> Apply All
+                </button>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                {[
+                  { label: 'Name', value: aiKpiSuggestion.name, onApply: () => setEditing({ ...editing, name: aiKpiSuggestion.name }) },
+                  { label: 'Dimension', value: aiKpiSuggestion.dimension, onApply: () => setEditing({ ...editing, category: aiKpiSuggestion.dimension }) },
+                  { label: 'Unit', value: 'Percentage', onApply: () => setEditing({ ...editing, targetType: aiKpiSuggestion.unit }) },
+                ].map((suggestion) => (
+                  <div
+                    className="group rounded-2xl border border-[var(--ai-border)] bg-white/80 p-3 shadow-soft transition hover:-translate-y-0.5 hover:border-[var(--ai)] dark:bg-white/5"
+                    key={suggestion.label}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[var(--ai-strong)]">{suggestion.label}</p>
+                      <Sparkles className="h-3.5 w-3.5 text-[var(--ai)] transition group-hover:scale-110" />
+                    </div>
+                    <p className="mt-2 min-h-10 text-sm font-extrabold leading-5 text-text">{suggestion.value}</p>
+                    <button
+                      className="mt-3 inline-flex h-8 items-center justify-center rounded-full bg-[var(--ai)] px-3 text-xs font-extrabold text-white transition hover:brightness-95"
+                      onClick={suggestion.onApply}
+                      type="button"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
             <input className="field w-full" placeholder="KPI name" value={editing.name} onChange={(event) => setEditing({ ...editing, name: event.target.value })} />
             <textarea className="min-h-24 w-full rounded-xl border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-primary" placeholder="Description" value={editing.description} onChange={(event) => setEditing({ ...editing, description: event.target.value })} />
             <div className="grid gap-3 md:grid-cols-3">
