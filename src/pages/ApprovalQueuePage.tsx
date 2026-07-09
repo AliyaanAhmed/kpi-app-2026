@@ -105,6 +105,10 @@ function PerformanceValidationQueue() {
     showSuccessToast('Published', 'Approved focal point submission has been published.')
   }
 
+  function directorApprovalCommentFor(instance: FocalPointSubmissionInstance) {
+    return instance.submissions.find((submission) => submission.directorComment?.trim())?.directorComment?.trim() ?? ''
+  }
+
   function confirmClarification() {
     if (!clarifying || !note.trim()) return
     mockApi.raiseClarification(clarifying.id, note)
@@ -157,6 +161,7 @@ function PerformanceValidationQueue() {
     const focalPoint = users.find((user) => user.id === selectedInstance.focalPointId)
     const departmentNames = Array.from(new Set(selectedInstance.submissions.map((submission) => mockApi.getDepartment(mockApi.getKpi(submission.kpiId)?.departmentId ?? '')?.name).filter(Boolean)))
     const stats = instanceStats(selectedInstance)
+    const directorComment = directorApprovalCommentFor(selectedInstance)
     const canSubmitDirector = selectedInstance.submissions.length > 0 && selectedInstance.submissions.every((submission) => submission.status === 'reviewed_by_performance_team')
     const canPublish = selectedInstance.submissions.length > 0 && selectedInstance.submissions.every((submission) => ['approved_by_director', 'director_approved'].includes(submission.status))
     const selectedSubmissions = selectedInstance.submissions.filter((submission) => selectedPerformanceSubmissionIds.includes(submission.id))
@@ -262,6 +267,19 @@ function PerformanceValidationQueue() {
               <button className="btn-primary h-10 text-xs" disabled={!canPublish} onClick={() => publishGroup(selectedInstance)} type="button"><ShieldCheck className="h-4 w-4" /> Publish</button>
             </div>
           </div>
+          {directorComment ? (
+            <div className="mt-5 rounded-2xl border border-primary/15 bg-primary-tint/60 px-4 py-3">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-white">
+                  <MessageSquare className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-extrabold text-text">Director Comment</p>
+                  <p className="mt-1 text-sm leading-6 text-text">{directorComment}</p>
+                </div>
+              </div>
+            </div>
+          ) : null}
           <div className="mt-5 w-full rounded-2xl border border-[var(--ai-border)] bg-[var(--ai-soft)] text-[var(--ai-strong)]">
             <button
               className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left text-sm font-semibold"
@@ -321,8 +339,8 @@ function PerformanceValidationQueue() {
           </div>
         </motion.section>
 
-        <section className="card p-4">
-          <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <section className="space-y-3">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex flex-wrap gap-2">
               {gridStatusTabs.map((tab) => (
                 <button className={tabClass(gridStatusFilter === tab.id)} key={tab.id} onClick={() => setGridStatusFilter(tab.id)} type="button">
@@ -336,7 +354,7 @@ function PerformanceValidationQueue() {
               <AppSelect className="border-[var(--ai-border)] bg-[var(--ai-soft)] text-[var(--ai-strong)]" value={gridAiFilter} onValueChange={setGridAiFilter} options={gridAiOptions} placeholder="AI Filter" />
             </div>
           </div>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-3 rounded-[24px] border border-border bg-surface px-4 py-3 shadow-soft lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-sm font-extrabold text-text">{selectedSubmissions.length} selected</p>
               <p className="mt-1 text-xs font-semibold text-muted">Select KPIs with the same status to enable bulk Performance Team actions.</p>
@@ -509,6 +527,7 @@ function PerformanceValidationQueue() {
           const stats = instanceStats(instance)
           const canSubmitDirector = instance.submissions.length > 0 && instance.submissions.every((submission) => submission.status === 'reviewed_by_performance_team')
           const canPublish = instance.submissions.length > 0 && instance.submissions.every((submission) => ['approved_by_director', 'director_approved'].includes(submission.status))
+          const directorComment = directorApprovalCommentFor(instance)
           return (
             <motion.article className="group rounded-[24px] border border-border bg-surface p-5 shadow-soft transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-card" key={instance.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.035 }}>
               <button className="block w-full text-left" onClick={() => setSelectedInstanceId(instance.id)} type="button">
@@ -528,6 +547,12 @@ function PerformanceValidationQueue() {
                       <Sparkles className="mr-2 inline h-4 w-4" />
                       AI summary: {stats.weakEvidence} KPIs have weak evidence and {stats.evidenceMismatch} KPIs do not match with evidence uploaded.
                     </div>
+                    {directorComment ? (
+                      <div className="mt-3 rounded-2xl border border-primary/15 bg-primary-tint/60 px-3 py-2 text-sm text-text">
+                        <MessageSquare className="mr-2 inline h-4 w-4 text-primary" />
+                        <span className="font-extrabold">Director Comment:</span> {directorComment}
+                      </div>
+                    ) : null}
                     <p className="mt-2 text-sm font-bold text-text">
                       Validation: {instance.submissions.length} KPIs - {stats.reviewed} Completed, {stats.pendingValidation} Pending
                     </p>
@@ -633,7 +658,7 @@ function DirectorApprovalQueue() {
   function approveGroup(instance: FocalPointSubmissionInstance) {
     const comment = directorApprovalComment.trim()
     const note = comment ? `Director approval comment: ${comment}` : 'Focal point submission approved by Department Director.'
-    instance.submissions.forEach((submission) => mockApi.approveKpi(submission.id, note))
+    instance.submissions.forEach((submission) => mockApi.approveKpi(submission.id, note, comment))
     showSuccessToast('Approved by Director', 'Reviewed focal point submission moved back to Performance Team for publishing.')
     setApprovingInstance(null)
     setDirectorApprovalComment('')

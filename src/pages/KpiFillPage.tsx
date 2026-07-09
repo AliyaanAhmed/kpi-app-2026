@@ -138,7 +138,7 @@ export function KpiFillPage() {
     <form className="space-y-5" onSubmit={handleSubmit(saveDraft)}>
       <Link className="inline-flex items-center gap-2 text-sm font-semibold text-muted hover:text-primary" to="/kpis"><ArrowLeft className="h-4 w-4" /> Back to KPI Grid</Link>
       <section className="raised-card p-6">
-        <div className="grid gap-5 xl:grid-cols-[1fr_360px] xl:items-start">
+        <div className="grid gap-5 xl:grid-cols-[1fr_300px] xl:items-start">
           <div>
             <div className="flex flex-wrap gap-2"><StatusPill value={activeSubmission.status} /><span className="status-pill border-info/20 bg-info/10 text-info">{activeKpi.category}</span></div>
             <p className="eyebrow mt-4">Focal Point Entry</p>
@@ -146,21 +146,18 @@ export function KpiFillPage() {
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">{activeKpi.description}</p>
           </div>
           <div className="ai-panel p-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--ai-strong)]">AI Review Score</p>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--ai-strong)]">AI Review Score</p>
             <div className="mt-3 flex items-center justify-between">
               <div>
-                <p className="font-display text-4xl font-extrabold">{aiScore}</p>
+                <p className="font-display text-5xl font-extrabold leading-none">{aiScore}</p>
               </div>
-              <div className="relative h-16 w-16">
-                <svg className="-rotate-90" viewBox="0 0 64 64">
-                  <circle cx="32" cy="32" r="25" fill="none" stroke="var(--ai-soft)" strokeWidth="7" />
-                  <circle cx="32" cy="32" r="25" fill="none" stroke="var(--ai)" strokeLinecap="round" strokeWidth="7" strokeDasharray="157" strokeDashoffset={157 - (157 * Math.min(100, aiScore)) / 100} />
+              <div className="relative h-[72px] w-[72px]">
+                <svg className="-rotate-90" viewBox="0 0 72 72">
+                  <circle cx="36" cy="36" r="28" fill="none" stroke="var(--ai-soft)" strokeWidth="8" />
+                  <circle cx="36" cy="36" r="28" fill="none" stroke="var(--ai)" strokeLinecap="round" strokeWidth="8" strokeDasharray="176" strokeDashoffset={176 - (176 * Math.min(100, aiScore)) / 100} />
                 </svg>
                 <Sparkles className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 text-[var(--ai)]" />
               </div>
-            </div>
-            <div className="mt-4 flex justify-end">
-              {actionButtons}
             </div>
           </div>
         </div>
@@ -411,6 +408,22 @@ export function KpiFillPage() {
         </div>
 
         <aside className="space-y-5">
+          <article className="card p-5">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-tint text-primary">
+                <Save className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-lg font-extrabold">KPI Actions</h3>
+                <p className="mt-1 text-sm text-muted">
+                  {isClarificationRecord ? 'Resubmit the clarified KPI response to Performance Team.' : 'Save this KPI response as draft before bulk submission.'}
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-2">
+              {actionButtons}
+            </div>
+          </article>
           <article className="ai-panel">
             <div className="flex items-center gap-3">
               <div className="ai-icon h-11 w-11"><WandSparkles className="h-5 w-5" /></div>

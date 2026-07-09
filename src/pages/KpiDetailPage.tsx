@@ -189,6 +189,15 @@ export function KpiDetailPage() {
       flagged: aiScore < 70,
     },
   ]
+  const recommendedPerformanceAction =
+    aiScore < 72 || !hasEvidence || evidenceMismatch || aiSummaryRows.filter((row) => row.flagged).length >= 3
+      ? 'clarify'
+      : 'review'
+  const clarificationPrompts = [
+    'Please strengthen the evidence and connect it clearly to the reported actual score.',
+    'Please clarify the analysis narrative with measurable progress and cycle-specific context.',
+    'Please update challenges and recommendations with specific blockers, owners, and next actions.',
+  ]
 
   function handlePerformanceCommentSave() {
     if (!activeSubmission) return
@@ -242,7 +251,7 @@ export function KpiDetailPage() {
         <ArrowLeft className="h-4 w-4" /> {backLabel}
       </Link>
       <section className="raised-card p-6">
-        <div className="grid gap-5 xl:grid-cols-[1fr_360px] xl:items-start">
+        <div className="grid gap-5 xl:grid-cols-[1fr_300px] xl:items-start">
           <div>
             <p className="eyebrow">{department?.name}</p>
             <h2 className="mt-1 text-3xl">{kpi.name}</h2>
@@ -253,13 +262,13 @@ export function KpiDetailPage() {
             </div>
           </div>
           <div className="ai-panel p-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--ai-strong)]">AI Review Score</p>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--ai-strong)]">AI Review Score</p>
             <div className="mt-3 flex items-center justify-between">
-              <p className="font-display text-4xl font-extrabold">{aiScore}</p>
-              <div className="relative h-16 w-16">
-                <svg className="-rotate-90" viewBox="0 0 64 64">
-                  <circle cx="32" cy="32" r="25" fill="none" stroke="var(--ai-soft)" strokeWidth="7" />
-                  <circle cx="32" cy="32" r="25" fill="none" stroke="var(--ai)" strokeLinecap="round" strokeWidth="7" strokeDasharray="157" strokeDashoffset={157 - (157 * Math.min(100, aiScore)) / 100} />
+              <p className="font-display text-5xl font-extrabold leading-none">{aiScore}</p>
+              <div className="relative h-[72px] w-[72px]">
+                <svg className="-rotate-90" viewBox="0 0 72 72">
+                  <circle cx="36" cy="36" r="28" fill="none" stroke="var(--ai-soft)" strokeWidth="8" />
+                  <circle cx="36" cy="36" r="28" fill="none" stroke="var(--ai)" strokeLinecap="round" strokeWidth="8" strokeDasharray="176" strokeDashoffset={176 - (176 * Math.min(100, aiScore)) / 100} />
                 </svg>
                 <Sparkles className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 text-[var(--ai)]" />
               </div>
@@ -287,6 +296,31 @@ export function KpiDetailPage() {
       </section>
       <section className="grid gap-5 lg:grid-cols-[1fr_360px]">
         <div className="space-y-5">
+        {user.role === 'performance_team' && activeSubmission ? (
+          <article className="card p-5">
+            <div className="flex items-start gap-3 border-b border-border pb-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-tint text-primary">
+                <MessageSquare className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-xl font-extrabold">Performance Team Comment</h3>
+                <p className="mt-1 text-sm leading-6 text-muted">Add the validation comment before marking this KPI as reviewed.</p>
+              </div>
+            </div>
+            <div className="mt-4">
+              {canPerformanceReview ? (
+                <textarea
+                  className="min-h-32 w-full rounded-2xl border border-border bg-surface-raised px-4 py-3 text-sm leading-6 text-text outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  placeholder="Enter Performance Team review comment..."
+                  value={effectivePerformanceComment}
+                  onChange={(event) => setPerformanceComment(event.target.value)}
+                />
+              ) : (
+                <p className="rounded-2xl border border-border bg-surface-raised p-4 text-sm leading-6 text-text">{activeSubmission.performanceTeamComment || 'No Performance Team comment.'}</p>
+              )}
+            </div>
+          </article>
+        ) : null}
         <article className="overflow-hidden rounded-[28px] border border-primary/20 bg-surface p-5 transition hover:border-primary/35 hover:shadow-card">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-start gap-4">
@@ -405,27 +439,22 @@ export function KpiDetailPage() {
                   <p className="mt-1 text-sm text-muted">Save the comment, or review the KPI directly when validation is complete.</p>
                 </div>
               </div>
-              <div className="mt-4 space-y-3">
-                <label className="block">
-                  <span className="mb-2 block text-sm font-bold">Performance Team Comment</span>
-                  {canPerformanceReview ? (
-                    <textarea
-                      className="min-h-28 w-full rounded-2xl border border-border bg-surface-raised px-3 py-2 text-sm leading-6 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
-                      placeholder="Enter Performance Team review comment..."
-                      value={effectivePerformanceComment}
-                      onChange={(event) => setPerformanceComment(event.target.value)}
-                    />
-                  ) : (
-                    <p className="rounded-2xl border border-border bg-surface-raised p-3 text-sm leading-6 text-muted">{activeSubmission.performanceTeamComment || 'No Performance Team comment.'}</p>
-                  )}
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {canPerformanceReview ? <button className="btn-primary h-9 text-xs" disabled={!effectivePerformanceComment.trim()} onClick={handlePerformanceCommentSave} type="button"><Save className="h-4 w-4" /> Save Comment</button> : null}
-                  {canPerformanceReview ? <button className="btn-primary h-9 text-xs" disabled={!effectivePerformanceComment.trim()} onClick={handlePerformanceReview} type="button"><Check className="h-4 w-4" /> Review</button> : null}
-                  {canPerformanceSubmitToDirector ? <button className="btn-primary h-9 text-xs" onClick={handlePerformanceSubmitToDirector} type="button"><Send className="h-4 w-4" /> Submit to Department Director</button> : null}
-                  {canPerformancePublish ? <button className="btn-primary h-9 text-xs" onClick={() => { mockApi.publishKpis([activeSubmission.id]); showSuccessToast('KPI published') }} type="button"><ShieldCheck className="h-4 w-4" /> Publish</button> : null}
-                  {canRaiseClarification ? <button className="btn-secondary h-9 text-xs" onClick={() => setClarificationOpen(true)} type="button"><MessageSquare className="h-4 w-4" /> Clarification</button> : null}
-                </div>
+              <div className="mt-4 grid gap-2">
+                {canPerformanceReview ? (
+                  <button className="btn-primary h-10 w-full justify-between text-xs" disabled={!effectivePerformanceComment.trim()} onClick={handlePerformanceReview} type="button">
+                    <span className="inline-flex items-center gap-2"><Check className="h-4 w-4" /> Mark as Reviewed</span>
+                    {recommendedPerformanceAction === 'review' ? <span className="rounded-full bg-[var(--ai)] px-2 py-0.5 text-[10px] font-extrabold text-white">AI recommended</span> : null}
+                  </button>
+                ) : null}
+                {canPerformanceReview ? <button className="btn-secondary h-10 w-full justify-start text-xs" disabled={!effectivePerformanceComment.trim()} onClick={handlePerformanceCommentSave} type="button"><Save className="h-4 w-4" /> Save Comment</button> : null}
+                {canRaiseClarification ? (
+                  <button className="btn-secondary h-10 w-full justify-between text-xs" onClick={() => setClarificationOpen(true)} type="button">
+                    <span className="inline-flex items-center gap-2"><MessageSquare className="h-4 w-4" /> Raise Clarification</span>
+                    {recommendedPerformanceAction === 'clarify' ? <span className="rounded-full bg-[var(--ai-soft)] px-2 py-0.5 text-[10px] font-extrabold text-[var(--ai-strong)]">AI recommended</span> : null}
+                  </button>
+                ) : null}
+                {canPerformanceSubmitToDirector ? <button className="btn-primary h-10 w-full justify-start text-xs" onClick={handlePerformanceSubmitToDirector} type="button"><Send className="h-4 w-4" /> Submit to Department Director</button> : null}
+                {canPerformancePublish ? <button className="btn-primary h-10 w-full justify-start text-xs" onClick={() => { mockApi.publishKpis([activeSubmission.id]); showSuccessToast('KPI published') }} type="button"><ShieldCheck className="h-4 w-4" /> Publish</button> : null}
               </div>
             </article>
           ) : null}
@@ -444,9 +473,9 @@ export function KpiDetailPage() {
                 <div className="rounded-2xl border border-border bg-surface-raised p-3 text-sm leading-6 text-muted">
                   Director review does not require a comment. Use clarification only when the KPI must return to the Focal Point.
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {canDirectorReview ? <button className="btn-primary h-9 text-xs" onClick={handleDirectorReview} type="button"><Check className="h-4 w-4" /> Review</button> : null}
-                  {canRaiseClarification ? <button className="btn-secondary h-9 text-xs" onClick={() => setClarificationOpen(true)} type="button"><MessageSquare className="h-4 w-4" /> Clarification</button> : null}
+                <div className="grid gap-2">
+                  {canDirectorReview ? <button className="btn-primary h-10 w-full justify-start text-xs" onClick={handleDirectorReview} type="button"><Check className="h-4 w-4" /> Mark as Reviewed</button> : null}
+                  {canRaiseClarification ? <button className="btn-secondary h-10 w-full justify-start text-xs" onClick={() => setClarificationOpen(true)} type="button"><MessageSquare className="h-4 w-4" /> Raise Clarification</button> : null}
                 </div>
               </div>
             </article>
@@ -482,6 +511,22 @@ export function KpiDetailPage() {
           value={clarificationNote}
           onChange={(event) => setClarificationNote(event.target.value)}
         />
+        <div className="mt-4">
+          <p className="mb-2 text-xs font-extrabold uppercase tracking-[0.12em] text-[var(--ai-strong)]">AI quick prompts</p>
+          <div className="flex flex-wrap gap-2">
+            {clarificationPrompts.map((prompt) => (
+              <button
+                className="inline-flex items-center gap-2 rounded-full border border-[var(--ai-border)] bg-[var(--ai-soft)] px-3 py-2 text-xs font-bold text-[var(--ai-strong)] transition hover:-translate-y-0.5 hover:border-[var(--ai)] hover:bg-white dark:hover:bg-white/10"
+                key={prompt}
+                onClick={() => setClarificationNote(prompt)}
+                type="button"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                {prompt}
+              </button>
+            ))}
+          </div>
+        </div>
       </Modal>
     </div>
   )
