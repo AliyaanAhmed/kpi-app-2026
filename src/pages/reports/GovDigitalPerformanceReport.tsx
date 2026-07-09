@@ -797,6 +797,7 @@ function KpiGridRow({ kpi, expanded, onToggle }: { kpi: KpiMetric; expanded: boo
 function KpiExpandedDetail({ kpi }: { kpi: KpiMetric }) {
   const row = kpi.selected
   const tags = tagsForKpi(kpi)
+  const previousRow = previousKpiRecord(kpi)
   return (
     <div className="grid gap-4 p-5 xl:grid-cols-[minmax(0,1fr)_360px]">
       <section className="rounded-[22px] border border-border bg-surface p-5 shadow-soft">
@@ -807,6 +808,7 @@ function KpiExpandedDetail({ kpi }: { kpi: KpiMetric }) {
             <p className="mt-2 text-sm leading-6 text-text">{kpiAiSummary(kpi)}</p>
           </div>
         </div>
+        <PreviousCycleComparison current={row} previous={previousRow} trend={kpi.trend} />
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           <NarrativeBlock label="Analysis" value={row.analysis} />
           <NarrativeBlock label="Challenges" value={row.challenges} />
@@ -839,6 +841,85 @@ function KpiExpandedDetail({ kpi }: { kpi: KpiMetric }) {
           </div>
         </section>
       </aside>
+    </div>
+  )
+}
+
+function PreviousCycleComparison({ current, previous, trend }: { current: KpiRecord; previous: KpiRecord | null; trend: Array<number | null> }) {
+  const scoreDelta = previous && current.score !== null && previous.score !== null ? current.score - previous.score : null
+  const actualDelta = previous && current.actual !== null && previous.actual !== null ? current.actual - previous.actual : null
+  const targetDelta = previous && current.target !== null && previous.target !== null ? current.target - previous.target : null
+  const direction = scoreDelta === null ? 'flat' : scoreDelta > 0.005 ? 'up' : scoreDelta < -0.005 ? 'down' : 'flat'
+  const movementClass = direction === 'up' ? 'text-success bg-success/10 border-success/20' : direction === 'down' ? 'text-danger bg-danger/10 border-danger/20' : 'text-warning bg-warning/10 border-warning/20'
+
+  return (
+    <div className="mt-5 overflow-hidden rounded-[20px] border border-[var(--ai-border)] bg-[var(--ai-soft)]">
+      <div className="flex flex-col gap-3 border-b border-[var(--ai-border)] px-4 py-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-[var(--ai-strong)]">Previous Cycle Comparison</p>
+          <p className="mt-1 text-sm font-semibold text-text">
+            {previous ? `${previous.quarter} compared with ${current.quarter}` : `No earlier quarter is available before ${current.quarter}.`}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <MiniSparkline values={trend} compact />
+          <span className={cn('rounded-full border px-3 py-1 text-xs font-extrabold', movementClass)}>
+            {scoreDelta === null ? 'No movement data' : `${formatPointDelta(scoreDelta)} score movement`}
+          </span>
+        </div>
+      </div>
+      <div className="grid gap-3 p-4 lg:grid-cols-3">
+        <ComparisonPanel
+          label="Previous Quarter"
+          quarter={previous?.quarter ?? 'N/A'}
+          target={previous?.target ?? null}
+          actual={previous?.actual ?? null}
+          score={previous?.score ?? null}
+        />
+        <ComparisonPanel
+          label="Current Quarter"
+          quarter={current.quarter}
+          target={current.target}
+          actual={current.actual}
+          score={current.score}
+          active
+        />
+        <div className="rounded-2xl border border-[var(--ai-border)] bg-white/80 p-4 dark:bg-white/5">
+          <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-muted">Movement Summary</p>
+          <div className="mt-3 grid gap-2">
+            <DeltaRow label="Actual change" value={actualDelta} />
+            <DeltaRow label="Target change" value={targetDelta} />
+            <DeltaRow label="Score change" value={scoreDelta} percentage />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ComparisonPanel({ active = false, actual, label, quarter, score, target }: { active?: boolean; actual: number | null; label: string; quarter: string; score: number | null; target: number | null }) {
+  return (
+    <div className={cn('rounded-2xl border p-4', active ? 'border-[var(--ai)] bg-white shadow-soft dark:bg-white/5' : 'border-[var(--ai-border)] bg-white/75 dark:bg-white/5')}>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-muted">{label}</p>
+        <span className={cn('rounded-full px-2.5 py-1 text-xs font-extrabold', active ? 'bg-[var(--ai)] text-white' : 'bg-[var(--ai-soft)] text-[var(--ai-strong)]')}>{quarter}</span>
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        <Kv label="Target" value={fmt(target)} />
+        <Kv label="Actual" value={fmt(actual)} />
+        <Kv label="Score" value={pct(score)} />
+      </div>
+    </div>
+  )
+}
+
+function DeltaRow({ label, percentage = false, value }: { label: string; percentage?: boolean; value: number | null }) {
+  const tone = value === null ? 'text-muted' : value > 0 ? 'text-success' : value < 0 ? 'text-danger' : 'text-warning'
+  const display = value === null ? 'N/A' : percentage ? formatPointDelta(value) : formatNumberDelta(value)
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl bg-surface-raised px-3 py-2">
+      <span className="text-xs font-bold text-muted">{label}</span>
+      <span className={cn('font-mono text-sm font-extrabold', tone)}>{display}</span>
     </div>
   )
 }
@@ -1235,6 +1316,12 @@ function kpiAiSummary(kpi: KpiMetric) {
   return `This KPI is currently ${pct(kpi.selected.score)} and ${direction} across available quarters. AI tags: ${tags.join(', ')}.`
 }
 
+function previousKpiRecord(kpi: KpiMetric) {
+  const selectedIndex = kpi.rows.findIndex((row) => row.monthNumber === kpi.selected.monthNumber && row.quarter === kpi.selected.quarter)
+  if (selectedIndex > 0) return kpi.rows[selectedIndex - 1]
+  return [...kpi.rows].filter((row) => row.monthNumber < kpi.selected.monthNumber).pop() ?? null
+}
+
 function answerQuestion(question: string, context: { rows: KpiRecord[]; allRows: KpiRecord[]; screen: Screen; sector: string; department: string }) {
   const q = question.toLowerCase()
   if (q.includes('improve')) {
@@ -1350,6 +1437,12 @@ function trendText(direction: string) {
 function formatPointDelta(value: number) {
   const sign = value > 0 ? '+' : ''
   return `${sign}${Math.round(value * 100)} pts`
+}
+
+function formatNumberDelta(value: number) {
+  const sign = value > 0 ? '+' : ''
+  const formatted = Math.abs(value) >= 1 ? value.toLocaleString(undefined, { maximumFractionDigits: 2 }) : value.toLocaleString(undefined, { maximumFractionDigits: 3 })
+  return `${sign}${formatted}`
 }
 
 function kpiCode(row: KpiRecord) {

@@ -35,7 +35,7 @@ function PerformanceValidationQueue() {
   const restoredInstanceId = (location.state as { selectedInstanceId?: string } | null)?.selectedInstanceId
   const [sectorFilter, setSectorFilter] = useState('all')
   const [departmentFilter, setDepartmentFilter] = useState('all')
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'reviewed' | 'submitted_to_director'>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'reviewed' | 'submitted_to_director' | 'ready_to_publish'>('all')
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(restoredInstanceId ?? null)
   const [selectedPerformanceSubmissionIds, setSelectedPerformanceSubmissionIds] = useState<string[]>([])
   const [gridDepartmentFilter, setGridDepartmentFilter] = useState('all')
@@ -78,7 +78,8 @@ function PerformanceValidationQueue() {
     if (status === 'all') return true
     if (status === 'pending') return instance.submissions.some((submission) => ['submitted_to_performance_team', 'with_performance_team'].includes(submission.status))
     if (status === 'reviewed') return instance.submissions.length > 0 && instance.submissions.every((submission) => submission.status === 'reviewed_by_performance_team')
-    return instance.submissions.some((submission) => ['submitted_to_director', 'reviewed_by_director', 'approved_by_director', 'director_approved', 'published'].includes(submission.status))
+    if (status === 'ready_to_publish') return instance.submissions.length > 0 && instance.submissions.every((submission) => ['approved_by_director', 'director_approved'].includes(submission.status))
+    return instance.submissions.some((submission) => ['submitted_to_director', 'reviewed_by_director'].includes(submission.status))
   }
   const visibleInstances = baseInstances.filter((instance) => instanceMatchesStatus(instance, statusFilter))
   const statusTabs = [
@@ -86,6 +87,7 @@ function PerformanceValidationQueue() {
     { id: 'pending' as const, label: 'Pending Review', count: baseInstances.filter((instance) => instanceMatchesStatus(instance, 'pending')).length },
     { id: 'reviewed' as const, label: 'Reviewed', count: baseInstances.filter((instance) => instanceMatchesStatus(instance, 'reviewed')).length },
     { id: 'submitted_to_director' as const, label: 'Submitted to Director', count: baseInstances.filter((instance) => instanceMatchesStatus(instance, 'submitted_to_director')).length },
+    { id: 'ready_to_publish' as const, label: 'Ready to Publish', count: baseInstances.filter((instance) => instanceMatchesStatus(instance, 'ready_to_publish')).length },
   ]
   const tabClass = (active: boolean) =>
     cn(
@@ -610,7 +612,7 @@ function DirectorApprovalQueue() {
   const restoredInstanceId = (location.state as { selectedInstanceId?: string } | null)?.selectedInstanceId
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(restoredInstanceId ?? null)
   const [selectedDirectorSubmissionIds, setSelectedDirectorSubmissionIds] = useState<string[]>([])
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'reviewed' | 'ready_to_publish' | 'published'>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'ready_to_approve' | 'published'>('all')
   const [directorGridDimensionFilter, setDirectorGridDimensionFilter] = useState('all')
   const [directorGridAiFilter, setDirectorGridAiFilter] = useState('all')
   const [directorGridStatusFilter, setDirectorGridStatusFilter] = useState<'all' | 'pending' | 'reviewed'>('all')
@@ -638,8 +640,7 @@ function DirectorApprovalQueue() {
   const directorInstanceMatchesStatus = (instance: FocalPointSubmissionInstance, status: typeof statusFilter) => {
     if (status === 'all') return true
     if (status === 'pending') return instance.submissions.some((submission) => submission.status === 'submitted_to_director')
-    if (status === 'reviewed') return instance.submissions.length > 0 && instance.submissions.every((submission) => submission.status === 'reviewed_by_director')
-    if (status === 'ready_to_publish') return instance.submissions.length > 0 && instance.submissions.every((submission) => ['approved_by_director', 'director_approved'].includes(submission.status))
+    if (status === 'ready_to_approve') return instance.submissions.length > 0 && instance.submissions.every((submission) => submission.status === 'reviewed_by_director')
     return instance.submissions.length > 0 && instance.submissions.every((submission) => submission.status === 'published')
   }
   const visibleInstances = departmentInstances.filter((instance) => directorInstanceMatchesStatus(instance, statusFilter))
@@ -647,8 +648,7 @@ function DirectorApprovalQueue() {
     () => ({
       all: departmentInstances.length,
       pending: departmentInstances.filter((instance) => directorInstanceMatchesStatus(instance, 'pending')).length,
-      reviewed: departmentInstances.filter((instance) => directorInstanceMatchesStatus(instance, 'reviewed')).length,
-      readyToPublish: departmentInstances.filter((instance) => directorInstanceMatchesStatus(instance, 'ready_to_publish')).length,
+      readyToApprove: departmentInstances.filter((instance) => directorInstanceMatchesStatus(instance, 'ready_to_approve')).length,
       published: departmentInstances.filter((instance) => directorInstanceMatchesStatus(instance, 'published')).length,
     }),
     [departmentInstances],
@@ -1017,8 +1017,7 @@ function DirectorApprovalQueue() {
           <div className="flex flex-wrap gap-2">
             <span className="status-pill border-primary/15 bg-primary-tint text-primary">All: {counts.all}</span>
             <span className="status-pill border-warning/20 bg-warning/10 text-warning">Pending Review: {counts.pending}</span>
-            <span className="status-pill border-info/20 bg-info/10 text-info">Reviewed: {counts.reviewed}</span>
-            <span className="status-pill border-success/20 bg-success/10 text-success">Ready to Publish: {counts.readyToPublish}</span>
+            <span className="status-pill border-success/20 bg-success/10 text-success">Ready to Approve: {counts.readyToApprove}</span>
             <span className="status-pill border-success/20 bg-success/10 text-success">Published: {counts.published}</span>
           </div>
         </div>
@@ -1028,8 +1027,7 @@ function DirectorApprovalQueue() {
         {[
           { id: 'all' as const, label: 'All', count: counts.all },
           { id: 'pending' as const, label: 'Pending Review', count: counts.pending },
-          { id: 'reviewed' as const, label: 'Reviewed', count: counts.reviewed },
-          { id: 'ready_to_publish' as const, label: 'Ready to Publish', count: counts.readyToPublish },
+          { id: 'ready_to_approve' as const, label: 'Ready to Approve', count: counts.readyToApprove },
           { id: 'published' as const, label: 'Published', count: counts.published },
         ].map((tab) => (
           <button className={tabClass(statusFilter === tab.id)} key={tab.id} onClick={() => setStatusFilter(tab.id)} type="button">
