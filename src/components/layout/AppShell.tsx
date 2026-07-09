@@ -161,9 +161,16 @@ export function AppShell() {
           ))}
         </nav>
 
-        <div className="mb-4 mt-auto rounded-2xl border border-border bg-surface-raised p-3 text-text">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
+        <div
+          className={cn(
+            'mb-4 mt-auto text-text',
+            sidebarCollapsed
+              ? 'flex justify-center rounded-full border-0 bg-transparent p-0'
+              : 'rounded-2xl border border-border bg-surface-raised p-3',
+          )}
+        >
+          <div className={cn('flex items-center', sidebarCollapsed ? 'justify-center gap-0' : 'gap-3')}>
+            <div className="flex aspect-square h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-sm font-bold leading-none text-white">
               {user.name.split(' ').map((part) => part[0]).slice(0, 2).join('')}
             </div>
             {!sidebarCollapsed ? (
